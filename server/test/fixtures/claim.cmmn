@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cmmn:definitions id="Definitions_claim"
+                  targetNamespace="http://flowable.org/cmmn"
+                  xmlns:cmmn="http://www.omg.org/spec/CMMN/20151109/MODEL"
+                  xmlns:cmmndi="http://www.omg.org/spec/CMMN/20151109/CMMNDI"
+                  xmlns:dc="http://www.omg.org/spec/CMMN/20151109/DC"
+                  xmlns:di="http://www.omg.org/spec/CMMN/20151109/DI"
+                  xmlns:flowable="http://flowable.org/cmmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <cmmn:case id="claimCase" name="Claim">
+    <cmmn:casePlanModel id="CasePlanModel_claim" name="Handle a claim" flowable:formKey="claimForm">
+      <cmmn:planItem id="PI_review" definitionRef="Task_review"/>
+      <cmmn:planItem id="PI_approve" definitionRef="Task_approve">
+        <cmmn:entryCriterion id="Entry_approve" sentryRef="Sentry_reviewed"/>
+      </cmmn:planItem>
+      <cmmn:planItem id="PI_handled" definitionRef="Milestone_handled">
+        <cmmn:entryCriterion id="Entry_handled" sentryRef="Sentry_approved"/>
+      </cmmn:planItem>
+      <cmmn:sentry id="Sentry_reviewed">
+        <cmmn:planItemOnPart id="OnPart_reviewed" sourceRef="PI_review">
+          <cmmn:standardEvent>complete</cmmn:standardEvent>
+        </cmmn:planItemOnPart>
+      </cmmn:sentry>
+      <cmmn:sentry id="Sentry_approved">
+        <cmmn:planItemOnPart id="OnPart_approved" sourceRef="PI_approve">
+          <cmmn:standardEvent>complete</cmmn:standardEvent>
+        </cmmn:planItemOnPart>
+      </cmmn:sentry>
+      <cmmn:humanTask id="Task_review" name="Review the claim" flowable:assignee="${initiator}"/>
+      <cmmn:humanTask id="Task_approve" name="Approve the claim" flowable:candidateGroups="managers"/>
+      <cmmn:milestone id="Milestone_handled" name="Claim handled"/>
+    </cmmn:casePlanModel>
+  </cmmn:case>
+  <cmmndi:CMMNDI>
+    <cmmndi:CMMNDiagram id="Diagram_claim">
+      <cmmndi:CMMNShape id="DI_CasePlanModel_claim" cmmnElementRef="CasePlanModel_claim">
+        <dc:Bounds x="100" y="60" width="620" height="260"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNShape>
+      <cmmndi:CMMNShape id="DI_PI_review" cmmnElementRef="PI_review">
+        <dc:Bounds x="150" y="150" width="100" height="80"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNShape>
+      <cmmndi:CMMNShape id="DI_PI_approve" cmmnElementRef="PI_approve">
+        <dc:Bounds x="350" y="150" width="100" height="80"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNShape>
+      <cmmndi:CMMNShape id="DI_Entry_approve" cmmnElementRef="Entry_approve">
+        <dc:Bounds x="340" y="176" width="20" height="28"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNShape>
+      <cmmndi:CMMNShape id="DI_PI_handled" cmmnElementRef="PI_handled">
+        <dc:Bounds x="550" y="170" width="100" height="40"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNShape>
+      <cmmndi:CMMNShape id="DI_Entry_handled" cmmnElementRef="Entry_handled">
+        <dc:Bounds x="540" y="176" width="20" height="28"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNShape>
+      <cmmndi:CMMNEdge id="DI_OnPart_reviewed" cmmnElementRef="OnPart_reviewed" targetCMMNElementRef="Entry_approve">
+        <di:waypoint x="250" y="190"/>
+        <di:waypoint x="340" y="190"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNEdge>
+      <cmmndi:CMMNEdge id="DI_OnPart_approved" cmmnElementRef="OnPart_approved" targetCMMNElementRef="Entry_handled">
+        <di:waypoint x="450" y="190"/>
+        <di:waypoint x="540" y="190"/>
+        <cmmndi:CMMNLabel/>
+      </cmmndi:CMMNEdge>
+    </cmmndi:CMMNDiagram>
+  </cmmndi:CMMNDI>
+</cmmn:definitions>

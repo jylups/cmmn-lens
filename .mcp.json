@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cmmn-lens-dev": {
+      "command": "node",
+      "args": ["server/src/index.js"]
+    }
+  }
+}

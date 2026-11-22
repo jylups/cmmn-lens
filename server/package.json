@@ -1,0 +1,24 @@
+{
+  "name": "@jylups/cmmn-lens-server",
+  "version": "0.0.1",
+  "private": true,
+  "description": "MCP server for the cmmn-lens plugin: serves an interactive viewer for local CMMN files on localhost.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "cmmn-lens-server": "src/index.js"
+  },
+  "files": [
+    "src",
+    "public"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@jylups/cmmn-js": "0.24.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "flowable-cmmn-moddle": "1.5.0",
+    "zod": "^4.6.7"
+  }
+}
