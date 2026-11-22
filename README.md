@@ -55,9 +55,12 @@ Requires Node 22 or later.
 
 ```bash
 npm install
+npm run build
 npm run lint
 npm test
 ```
+
+`npm run build` bundles what the page loads in edit mode (the cmmn-js Modeler and the Flowable properties panel, which have no browser bundle of their own) into `server/public/build/`, which git ignores. View mode works without it.
 
 Validate the manifests with the Claude Code CLI:
 
@@ -73,6 +76,8 @@ claude plugin validate --strict plugins/cmmn-lens
 `open_view`: given the path of a `.cmmn` file, it starts a web server on `127.0.0.1` with a random port, and returns the URL of a page that shows the diagram with the cmmn-js viewer and the Flowable extensions. Calling it again for the same file returns the same URL. Every page and file request needs the server's random token, and the web server stops when the MCP server exits.
 
 The page follows the file: the server watches the file's folder and tells the page, over server-sent events, when the content changes, so edits, shell writes and editors' saves all show within a second. The page keeps the zoom and scroll position, lists import errors and warnings under its bar, and keeps the last version that opened when a new one doesn't, or when the file is deleted.
+
+**Edit** switches the page to the cmmn-js Modeler with the Flowable properties panel; **Save** (or Cmd/Ctrl+S) writes the model to the file, replacing it in one step and keeping its permissions, and **Done** goes back to the viewer. While there are no unsaved edits, changes to the file still show in the editor; with unsaved edits the page says the file changed and leaves the edits alone.
 
 Beside the diagram (under it when the pane is narrow) a read-only properties panel shows the selected elements as the file has them: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. It can be hidden. A page that loads again shows the selection the server holds.
 

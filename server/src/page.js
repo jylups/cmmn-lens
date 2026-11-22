@@ -9,10 +9,21 @@
  * @param {string} options.eventsUrl the stream that says when the file changes
  * @param {string} options.selectionUrl where the page posts the user's selection
  * @param {string} options.describeUrl where the page gets the selected elements' properties
+ * @param {string} options.saveUrl where the page saves the model in edit mode
  * @returns {string}
  */
-export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, describeUrl }) {
-  const config = jsonForScript({ name, diagramUrl, eventsUrl, selectionUrl, describeUrl, flowableUrl: '/assets/flowable.json' });
+export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, describeUrl, saveUrl }) {
+  const config = jsonForScript({
+    name,
+    diagramUrl,
+    eventsUrl,
+    selectionUrl,
+    describeUrl,
+    saveUrl,
+    flowableUrl: '/assets/flowable.json',
+    editorScriptUrl: '/assets/build/editor.js',
+    editorStyleUrl: '/assets/build/properties-panel.css'
+  });
 
   return `<!doctype html>
 <html lang="en">
@@ -30,6 +41,11 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
   <header class="bar">
     <span class="file" title="${escapeHtml(path)}">${escapeHtml(name)}</span>
     <span class="status" id="status" role="status">Opening…</span>
+    <span class="actions">
+      <button type="button" id="edit" hidden>Edit</button>
+      <button type="button" id="save" hidden>Save</button>
+      <button type="button" id="done" hidden>Done</button>
+    </span>
   </header>
   <details class="problems" id="problems" hidden>
     <summary id="problems-summary"></summary>
@@ -45,6 +61,7 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
       <div class="properties-body" id="properties-body">
         <p class="properties-empty">Select an element to see its properties.</p>
       </div>
+      <div class="properties-editor" id="properties-editor" hidden></div>
     </aside>
   </div>
   <script id="cmmn-lens-config" type="application/json">${config}</script>
