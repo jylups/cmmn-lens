@@ -77,3 +77,14 @@ body {
 .problems li[data-kind="error"] {
   color: #b91c1c;
 }
+
+/* elements the agent points at (the navigated viewer draws no outlines, so
+   the shape itself is marked) */
+.djs-element.cmmn-lens-highlight .djs-visual > :first-child {
+  stroke: #d97706 !important;
+  stroke-width: 3px !important;
+}
+
+.djs-shape.cmmn-lens-highlight .djs-visual > :first-child {
+  fill: #fef3c7 !important;
+}

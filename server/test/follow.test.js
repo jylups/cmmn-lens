@@ -7,100 +7,10 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { versionOf } from '../src/follow.js';
+import { eventsUrl, openEvents } from './helpers/events.js';
 import { ViewServer } from '../src/views.js';
 
 const FIXTURE = join(import.meta.dirname, 'fixtures', 'claim.cmmn');
-
-/** A file change must reach the page within this time (issue #3). */
-const DEADLINE_MS = 1000;
-
-/**
- * Reads a server-sent event stream: `next()` resolves with the next event's
- * data, or rejects when none comes within the time given.
- */
-async function openEvents(url) {
-  const controller = new AbortController();
-  const response = await fetch(url, { signal: controller.signal });
-
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get('content-type'), /^text\/event-stream/);
-
-  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
-  const queue = [];
-  const waiters = [];
-  let buffer = '';
-
-  (async () => {
-    try {
-      for (;;) {
-        const { value, done } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        buffer += value;
-
-        let end;
-
-        while ((end = buffer.indexOf('\n\n')) >= 0) {
-          const block = buffer.slice(0, end);
-          buffer = buffer.slice(end + 2);
-
-          const data = /^data: (.*)$/m.exec(block);
-
-          if (/^event: state$/m.test(block) && data) {
-            const event = JSON.parse(data[1]);
-            const waiter = waiters.shift();
-
-            waiter ? waiter.resolve(event) : queue.push(event);
-          }
-        }
-      }
-    } catch {
-      // aborted
-    }
-
-    for (const waiter of waiters.splice(0)) {
-      waiter.reject(new Error('the stream ended'));
-    }
-  })();
-
-  return {
-    next(timeoutMs = DEADLINE_MS) {
-      if (queue.length) {
-        return Promise.resolve(queue.shift());
-      }
-
-      return new Promise((resolve, reject) => {
-        const waiter = {
-          resolve: event => {
-            clearTimeout(timer);
-            resolve(event);
-          },
-          reject
-        };
-        const timer = setTimeout(() => {
-          waiters.splice(waiters.indexOf(waiter), 1);
-          reject(new Error(`no event within ${timeoutMs} ms`));
-        }, timeoutMs);
-
-        waiters.push(waiter);
-      });
-    },
-    close() {
-      controller.abort();
-    }
-  };
-}
-
-function eventsUrl(viewUrl) {
-  const url = new URL(viewUrl);
-
-  url.pathname += '/events';
-
-  return url.href;
-}
 
 describe('following a file', () => {
   let folder;
@@ -180,7 +90,7 @@ describe('following a file', () => {
 
     await writeFile(file, await readFile(file));
 
-    await assert.rejects(events.next(400), /no event/);
+    await assert.rejects(events.next('state', 400), /no state event/);
   });
 
   test('reports a deleted file, and its return', async () => {
@@ -222,6 +132,6 @@ describe('following a file', () => {
 
     await views.close();
 
-    await assert.rejects(events.next(), /stream ended|no event/);
+    await assert.rejects(events.next(), /stream ended|no state event/);
   });
 });
