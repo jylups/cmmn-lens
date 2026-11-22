@@ -4,7 +4,7 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
-## Unreleased
+## 0.1.1 (2026-11-22)
 
 - The plugin has an icon and a README of its own for the plugin directory listing
 - The MCP tools' annotations carry their title and `destructiveHint: false`
