@@ -10,6 +10,7 @@ The cmmn-lens MCP server has these tools for local CMMN files:
 - `open_view` opens a viewer for a file and returns its URL on `localhost`. The page follows the file: each time the file changes, the diagram updates within a second, keeping the user's zoom and position. Calling it again for the same file returns the same URL (`isReused: true`).
 - `validate` parses a file the way the viewer does, with the CMMN and Flowable descriptors, and lists the problems with their element ids and lines.
 - `highlight` marks elements in a viewer and scrolls them into view, until the file changes again.
+- `get_changes` returns what the user changed and saved in a viewer since you last looked: elements added, removed and changed, and how many shapes moved. Each change is returned once.
 - `get_selection` returns the elements the user has selected in a viewer, described from the file as it is now: the task or other item a plan item stands for, its attributes (Flowable ones included), its entry and exit criteria with their sentries, and its stage.
 
 They take a path, absolute or relative to the working directory, of a `.cmmn` or `.xml` file; for `get_selection` and `highlight` it is optional (the viewer used last).
@@ -29,6 +30,12 @@ For a new file, write it first (with a diagram, see below), then open the view.
 ## When the user points at the diagram
 
 When the user refers to part of the model without naming it ("this task", "the selected one", "what I clicked", "what does this do?"), use what they have selected in the view. The plugin usually adds it to the prompt's context ("The user has selected in the cmmn-lens viewer of …"); when that is missing, or you need it again later in the turn, call `get_selection`. Answer about the elements it names. Use their ids when you edit them. If nothing is selected, ask the user to click the element in the view. The selection stays across updates of the file, so after an edit it still names the same elements.
+
+## When the user edits in the viewer
+
+The viewer has an edit mode: the user can change the model and save it to the file. The plugin adds what they saved to the next prompt's context ("The user changed … in the cmmn-lens viewer and saved it"); when the user says they changed the model and that context is missing, call `get_changes`. Either way, read the file again before you edit it, so you don't overwrite their work with what you remember.
+
+If the user has unsaved edits in the viewer when you change the file, the viewer asks them which version to keep; your change isn't lost unseen.
 
 ## After each edit
 

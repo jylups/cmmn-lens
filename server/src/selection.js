@@ -103,12 +103,12 @@ function basics(element) {
   return details;
 }
 
-function typeOf(element) {
+export function typeOf(element) {
   return element.$parent?.$instanceOf?.('cmmn:Case') && element.$instanceOf('cmmn:Stage') ? 'casePlanModel' : element.$type;
 }
 
 /** The attributes set in the file: the element's own values, and unknown attributes. */
-function attributesOf(element) {
+export function attributesOf(element) {
   const attributes = {};
 
   for (const key of Object.keys(element)) {

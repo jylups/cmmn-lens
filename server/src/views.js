@@ -1,3 +1,4 @@
+import { realpathSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmod, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
@@ -5,6 +6,7 @@ import { createRequire } from 'node:module';
 import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { describeChanges, diffModels, isEmpty } from './changes.js';
 import { FileFollower, versionOf } from './follow.js';
 import { resolveDrawnIds } from './highlight.js';
 import { resolveCmmnFile } from './paths.js';
@@ -83,7 +85,8 @@ export class ViewServer {
    *   registry; `baseDir` by default
    */
   constructor({ baseDir = process.cwd(), isRegistered = false, registryDir, projectDir = baseDir } = {}) {
-    this.baseDir = baseDir;
+    // resolved, as the files' paths are, so paths shown relative to it stay short
+    this.baseDir = resolvedPath(baseDir);
     this.isRegistered = isRegistered;
     this.registryDir = registryDir;
     this.projectDir = projectDir;
@@ -117,7 +120,8 @@ export class ViewServer {
         clients: new Set(),
         selection: { ids: [], at: 0 },
         highlight: null,
-        touched: 0
+        touched: 0,
+        userChanges: []
       };
       view.follower = new FileFollower(realPath, state => this.broadcast(view, state));
       await view.follower.start();
@@ -333,6 +337,21 @@ export class ViewServer {
 
     const url = new URL(request.url, this.origin());
 
+    if (url.pathname === '/changes') {
+      if (request.method !== 'GET') {
+        return send(response, 405, 'Method not allowed', { Allow: 'GET' });
+      }
+
+      if (!this.isToken(url.searchParams.get('t'))) {
+        return send(response, 403, 'Forbidden');
+      }
+
+      return send(response, 200, JSON.stringify(await this.takeUserChanges()), {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      });
+    }
+
     if (url.pathname === '/selection') {
       if (request.method !== 'GET') {
         return send(response, 405, 'Method not allowed', { Allow: 'GET' });
@@ -458,13 +477,14 @@ export class ViewServer {
       return send(response, 400, 'The save needs baseVersion, the version the edits were made on');
     }
 
-    let current;
+    let current = null;
+    let previous = null;
 
     try {
-      current = versionOf(await readFile(view.path));
+      previous = await readFile(view.path, 'utf8');
+      current = versionOf(previous);
     } catch {
       // the file is gone: saving puts it back
-      current = null;
     }
 
     if (current !== null && current !== body.baseVersion) {
@@ -487,9 +507,48 @@ export class ViewServer {
       return send(response, 500, `Couldn't save ${view.name}: ${error.message}`);
     }
 
+    if (previous !== null) {
+      await this.recordUserChange(view, previous, body.xml);
+    }
+
     return send(response, 200, JSON.stringify({ version: versionOf(body.xml) }), {
       'Content-Type': 'application/json; charset=utf-8'
     });
+  }
+
+  /** Keeps what a save from the page changed, until the agent has seen it. */
+  async recordUserChange(view, before, after) {
+    try {
+      const changes = await diffModels(before, after);
+
+      if (!isEmpty(changes)) {
+        view.userChanges.push({ at: Date.now(), changes });
+      }
+    } catch (error) {
+      console.error('cmmn-lens: comparing the saved versions failed', error.message);
+    }
+  }
+
+  /**
+   * The changes the user saved in a view (or in every view) that the agent
+   * hasn't seen, as text, and forgets them.
+   *
+   * @param {string} [path] one file's view; every view when left out
+   * @returns {Promise<Array<{ path: string, name: string, at: number, text: string }>>}
+   */
+  async takeUserChanges(path) {
+    const views = path ? [await this.pickView(path)].filter(Boolean) : [...this.viewsById.values()];
+    const taken = [];
+
+    for (const view of views) {
+      for (const change of view.userChanges) {
+        taken.push({ path: view.path, name: view.name, at: change.at, text: describeChanges(change.changes) });
+      }
+
+      view.userChanges = [];
+    }
+
+    return taken.sort((a, b) => a.at - b.at);
   }
 
   /** Stores the selection a page posts: `{ ids: string[] }`. */
@@ -614,5 +673,13 @@ async function readJson(request, response, limit) {
     send(response, 400, 'Not JSON');
 
     return undefined;
+  }
+}
+
+function resolvedPath(path) {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
   }
 }

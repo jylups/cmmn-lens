@@ -29,7 +29,7 @@ While the repository is private, only people with access to it can install the p
 
 The plugin's `cmmn-viewer` skill tells Claude to open the viewer when it works on a local `.cmmn` file, before it changes anything, and to validate the file after each edit. In the Claude desktop app the view opens in the built-in browser pane, beside the chat; elsewhere Claude gives you its URL.
 
-When you select elements in the view, the plugin adds them to each prompt's context, so you can say "rename this" or "what does this do?" without naming the element. To turn that off, set the plugin's **Add the viewer selection to prompts** option to off (`/config`, or the plugin's settings in the desktop app).
+When you save changes in the view's edit mode, the plugin tells Claude what you changed in your next prompt, once. When you select elements in the view, the plugin adds them to each prompt's context, so you can say "rename this" or "what does this do?" without naming the element. To turn that off, set the plugin's **Add the viewer selection to prompts** option to off (`/config`, or the plugin's settings in the desktop app).
 
 To make sure Claude uses it in a project that keeps CMMN models, add this to the project's `CLAUDE.md`, with your own folder:
 
@@ -71,7 +71,7 @@ claude plugin validate --strict plugins/cmmn-lens
 
 ### The viewer server
 
-`server/` is an MCP server (stdio) with four tools so far: `open_view`, `validate`, `get_selection` and `highlight`.
+`server/` is an MCP server (stdio) with five tools so far: `open_view`, `validate`, `get_selection`, `highlight` and `get_changes`.
 
 `open_view`: given the path of a `.cmmn` file, it starts a web server on `127.0.0.1` with a random port, and returns the URL of a page that shows the diagram with the cmmn-js viewer and the Flowable extensions. Calling it again for the same file returns the same URL. Every page and file request needs the server's random token, and the web server stops when the MCP server exits.
 
@@ -83,11 +83,13 @@ Beside the diagram (under it when the pane is narrow) a read-only properties pan
 
 `validate`: given the path of a `.cmmn` file, it parses it the way the viewer does, with the CMMN and Flowable descriptors, and lists the problems with their element ids and lines. Errors are XML that doesn't parse, duplicate ids and references to elements that don't exist. Warnings are attributes nothing reads and elements with no shape in the diagram, which the viewer can't show.
 
-While it runs, the server lists itself (port, token, project folder) in a registry folder under the system's temporary folder, readable only by you, and removes the entry when it stops. The plugin's `UserPromptSubmit` hook (`plugins/cmmn-lens/hooks/selection-context.mjs`) reads the servers of the session's project, asks each for its selection (`GET /selection`, with the token), and adds the newest to the prompt's context.
+While it runs, the server lists itself (port, token, project folder) in a registry folder under the system's temporary folder, readable only by you, and removes the entry when it stops. The plugin's `UserPromptSubmit` hook (`plugins/cmmn-lens/hooks/selection-context.mjs`) reads the servers of the session's project, asks each for its selection (`GET /selection`, with the token), and adds the newest to the prompt's context, with the changes the user saved since the last prompt (`GET /changes`).
 
 `get_selection`: the page posts the user's selection to the server as it changes, and keeps it across updates of the file. The tool describes the selected elements from the file as it is now: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. Without a path it reads the viewer whose selection changed last.
 
 `highlight`: marks elements in the view and scrolls them into view, until the file changes again. A task, stage or milestone is marked through the plan items that use it, and a sentry through its criteria. The mark applies to the version of the file it was made for, so a highlight sent right after an edit shows once the page has that version.
+
+`get_changes`: when the user saves from the viewer, the server compares the version it replaces with the new one, element by element (added, removed and changed elements, with each change before and after, and a count of moved shapes), and keeps the result until the agent has seen it. The tool returns it once; the prompt hook adds it to the next prompt.
 
 To try it, open a Claude Code session in this folder: `.mcp.json` registers the server as `cmmn-lens-dev` (approve it when asked), and `server/test/fixtures/claim.cmmn` is a small sample. The plugin itself starts the server from the published npm package once that exists.
 
