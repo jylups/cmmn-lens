@@ -2,7 +2,7 @@
 
 A Claude Code plugin that shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
 
-**Status:** in development; the first release is 0.1.0. The plugin starts its server with `npx @jylups/cmmn-lens-server@0.1.0`, which works once that version is on npm (it is published with the first release, when this repository goes public). Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
+**Status:** 0.1.0 is released ([release notes](https://github.com/jylups/cmmn-lens/releases/tag/v0.1.0)); the plugin starts its server with `npx @jylups/cmmn-lens-server@0.1.0` from npm. See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for what comes next.
 
 ## What it will run
 
@@ -25,9 +25,7 @@ In a Claude Code terminal session:
 /plugin install cmmn-lens --marketplace jylups/cmmn-lens
 ```
 
-Answer `y` to add the marketplace, then pick a scope. In the Claude desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `jylups/cmmn-lens`, then **Add plugin**.
-
-While the repository is private, only people with access to it can install the plugin.
+Answer `y` to add the marketplace, then pick a scope. The install may say an option isn't set: that is **Add the viewer selection to prompts**, which is on until you turn it off. In the Claude desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `jylups/cmmn-lens`, then **Add plugin**.
 
 ## Use it in a project
 
