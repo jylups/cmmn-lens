@@ -1,0 +1,5 @@
+{
+  "name": "cmmn-lens-pane-spike",
+  "version": "0.0.0",
+  "description": "Spike (#14): the open CMMN diagram as a pane beside the chat, drawn from an SVG snapshot the viewer server would serve."
+}
