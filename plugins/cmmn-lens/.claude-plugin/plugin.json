@@ -1,6 +1,6 @@
 {
   "name": "cmmn-lens",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat, and tells Claude what you select.",
   "author": {
     "name": "jylups",

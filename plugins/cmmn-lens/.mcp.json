@@ -2,7 +2,10 @@
   "mcpServers": {
     "cmmn-lens": {
       "command": "npx",
-      "args": ["--yes", "@jylups/cmmn-lens-server@0.1.0"]
+      "args": [
+        "--yes",
+        "@jylups/cmmn-lens-server@0.1.1"
+      ]
     }
   }
 }
