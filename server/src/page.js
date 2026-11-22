@@ -47,6 +47,11 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
       <button type="button" id="done" hidden>Done</button>
     </span>
   </header>
+  <div class="conflict" id="conflict" role="alert" hidden>
+    <span>The file changed on disk while you were editing.</span>
+    <button type="button" id="conflict-reload">Load the file's version</button>
+    <button type="button" id="conflict-keep">Keep my edits</button>
+  </div>
   <details class="problems" id="problems" hidden>
     <summary id="problems-summary"></summary>
     <ul id="problems-list"></ul>

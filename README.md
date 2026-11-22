@@ -77,7 +77,7 @@ claude plugin validate --strict plugins/cmmn-lens
 
 The page follows the file: the server watches the file's folder and tells the page, over server-sent events, when the content changes, so edits, shell writes and editors' saves all show within a second. The page keeps the zoom and scroll position, lists import errors and warnings under its bar, and keeps the last version that opened when a new one doesn't, or when the file is deleted.
 
-**Edit** switches the page to the cmmn-js Modeler with the Flowable properties panel; **Save** (or Cmd/Ctrl+S) writes the model to the file, replacing it in one step and keeping its permissions, and **Done** goes back to the viewer. While there are no unsaved edits, changes to the file still show in the editor; with unsaved edits the page says the file changed and leaves the edits alone.
+**Edit** switches the page to the cmmn-js Modeler with the Flowable properties panel; **Save** (or Cmd/Ctrl+S) writes the model to the file, replacing it in one step and keeping its permissions, and **Done** goes back to the viewer. While there are no unsaved edits, changes to the file still show in the editor. When the file changes under unsaved edits (Claude edited it, say), a bar asks whether to load the file's version or keep your edits, and a save made on an older version is refused, so neither side's change is lost without you choosing.
 
 Beside the diagram (under it when the pane is narrow) a read-only properties panel shows the selected elements as the file has them: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. It can be hidden. A page that loads again shows the selection the server holds.
 
