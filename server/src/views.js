@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { FileFollower, versionOf } from './follow.js';
 import { renderPage } from './page.js';
 
 const require = createRequire(import.meta.url);
@@ -35,13 +36,20 @@ const CONTENT_TYPES = {
 /** The file types a view can be opened for. */
 export const VIEWABLE_EXTENSIONS = ['.cmmn', '.xml'];
 
-const VIEW_PATH = /^\/view\/([0-9a-f]+)(\/diagram)?$/;
+const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events))?$/;
+
+/** How often an idle event stream gets a comment, so nothing in between closes it. */
+const KEEPALIVE_MS = 25_000;
 
 /**
  * Serves one viewer page per opened file on localhost. The web server starts
  * on the first `open` and listens on a random port of 127.0.0.1. Every page
  * and diagram request needs the server's random token, and a Host header that
  * names the server, so other sites in the browser can't read the files.
+ *
+ * Each view follows its file: the page subscribes to `/view/<id>/events`, a
+ * stream of server-sent `state` events (`{ version, exists }`), one on connect
+ * and one each time the file's content changes or it disappears or comes back.
  */
 export class ViewServer {
   /**
@@ -56,6 +64,7 @@ export class ViewServer {
     this.viewsById = new Map();
     this.server = null;
     this.port = null;
+    this.keepalive = null;
   }
 
   /**
@@ -92,7 +101,9 @@ export class ViewServer {
     const isReused = Boolean(view);
 
     if (!view) {
-      view = { id: randomBytes(6).toString('hex'), path: realPath, name: basename(realPath) };
+      view = { id: randomBytes(6).toString('hex'), path: realPath, name: basename(realPath), clients: new Set() };
+      view.follower = new FileFollower(realPath, state => this.broadcast(view, state));
+      await view.follower.start();
       this.viewsByPath.set(realPath, view);
       this.viewsById.set(view.id, view);
     }
@@ -132,14 +143,41 @@ export class ViewServer {
     });
 
     this.port = server.address().port;
+
+    this.keepalive = setInterval(() => {
+      for (const view of this.viewsById.values()) {
+        for (const client of view.clients) {
+          client.write(': keepalive\n\n');
+        }
+      }
+    }, KEEPALIVE_MS);
+    this.keepalive.unref();
+  }
+
+  /** Sends a view's file state to every page that shows it. */
+  broadcast(view, state) {
+    for (const client of view.clients) {
+      sendEvent(client, 'state', state);
+    }
   }
 
   /** Stops the web server and forgets the views. */
   async close() {
     const server = this.server;
 
+    clearInterval(this.keepalive);
+
+    for (const view of this.viewsById.values()) {
+      view.follower.stop();
+
+      for (const client of view.clients) {
+        client.end();
+      }
+    }
+
     this.server = null;
     this.port = null;
+    this.keepalive = null;
     this.viewsByPath.clear();
     this.viewsById.clear();
 
@@ -186,7 +224,11 @@ export class ViewServer {
       return send(response, 403, 'Forbidden');
     }
 
-    if (match[2]) {
+    if (match[2] === 'events') {
+      return this.stream(request, response, view);
+    }
+
+    if (match[2] === 'diagram') {
       let xml;
 
       try {
@@ -197,20 +239,40 @@ export class ViewServer {
 
       return send(response, 200, xml, {
         'Content-Type': 'application/xml; charset=utf-8',
-        'Cache-Control': 'no-store'
+        'Cache-Control': 'no-store',
+        'X-Diagram-Version': versionOf(xml)
       });
     }
 
     const page = renderPage({
       name: view.name,
       path: view.path,
-      diagramUrl: `/view/${view.id}/diagram?t=${this.token}`
+      diagramUrl: `/view/${view.id}/diagram?t=${this.token}`,
+      eventsUrl: `/view/${view.id}/events?t=${this.token}`
     });
 
     return send(response, 200, page, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store'
     });
+  }
+
+  /** Opens a page's event stream and sends the file's current state. */
+  stream(request, response, view) {
+    response.writeHead(200, {
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff'
+    });
+
+    if (request.method === 'HEAD') {
+      return response.end();
+    }
+
+    response.write('retry: 2000\n\n');
+    sendEvent(response, 'state', view.follower.state);
+    view.clients.add(response);
+    request.on('close', () => view.clients.delete(response));
   }
 
   isToken(candidate) {
@@ -230,4 +292,8 @@ function send(response, status, body, headers = {}) {
     ...headers
   });
   response.end(response.req.method === 'HEAD' ? undefined : body);
+}
+
+function sendEvent(response, event, data) {
+  response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
