@@ -1,0 +1,59 @@
+# cmmn-lens
+
+A Claude Code plugin that shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
+
+**Status:** in development. This version only sets up the plugin and its marketplace; it adds no viewer, tools, skills or hooks yet. See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
+
+## What it will run
+
+- A local MCP server, started by Claude Code when the plugin is enabled.
+- A web page served by that server on `localhost` only, with a random port and token. In the Claude desktop app the page opens in the built-in browser pane; in the terminal and VS Code it opens in your browser.
+- It reads the `.cmmn` file you open in the viewer, and writes it only when you save from the viewer.
+- It sends nothing to other servers and collects no usage data.
+
+## Install
+
+In a Claude Code terminal session:
+
+```
+/plugin install cmmn-lens --marketplace jylups/cmmn-lens
+```
+
+Answer `y` to add the marketplace, then pick a scope. In the Claude desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `jylups/cmmn-lens`, then **Add plugin**.
+
+While the repository is private, only people with access to it can install the plugin.
+
+## Repository layout
+
+| Path | What it is |
+|---|---|
+| `.claude-plugin/marketplace.json` | The marketplace that lists the plugin |
+| `plugins/cmmn-lens/` | The plugin folder that Claude Code installs |
+| `tests/` | Checks of the manifests |
+
+## Development
+
+Requires Node 20 or later.
+
+```bash
+npm install
+npm run lint
+npm test
+```
+
+Validate the manifests with the Claude Code CLI:
+
+```bash
+claude plugin validate --strict .
+claude plugin validate --strict plugins/cmmn-lens
+```
+
+Load the plugin from the working copy for one session:
+
+```bash
+claude --plugin-dir plugins/cmmn-lens
+```
+
+## License
+
+[MIT](LICENSE). The viewer will bundle third-party packages under their own licenses; their notices will ship with it.
