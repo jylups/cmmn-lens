@@ -9,5 +9,19 @@
   "homepage": "https://github.com/jylups/cmmn-lens",
   "repository": "https://github.com/jylups/cmmn-lens",
   "license": "MIT",
-  "keywords": ["cmmn", "flowable", "case-management", "diagram", "viewer"]
+  "keywords": [
+    "cmmn",
+    "flowable",
+    "case-management",
+    "diagram",
+    "viewer"
+  ],
+  "userConfig": {
+    "selection_context": {
+      "type": "boolean",
+      "title": "Add the viewer selection to prompts",
+      "description": "Before each prompt, tell Claude which elements you have selected in a cmmn-lens viewer, so you can say \"this task\" without naming it.",
+      "default": true
+    }
+  }
 }
