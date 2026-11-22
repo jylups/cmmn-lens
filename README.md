@@ -110,7 +110,7 @@ claude --plugin-dir plugins/cmmn-lens
 
 cmmn-lens is [MIT](LICENSE) licensed.
 
-The server package includes code and files from other packages, bundled into the server or the editor, or copied into `public/vendor`: the cmmn-js fork and diagram-js, the CMMN and Flowable moddle packages, the Flowable properties panel and their dependencies. [`server/THIRD_PARTY_NOTICES.md`](server/THIRD_PARTY_NOTICES.md) lists each with its version, license and license text; `npm run build` writes it, CI checks that it matches the build, and the npm package ships it. They are MIT, ISC or Apache-2.0 licensed, except:
+The server package includes code and files from other packages, bundled into the server or the editor, or copied into `public/vendor`: the cmmn-js fork and diagram-js, the CMMN and Flowable moddle packages, the Flowable properties panel and their dependencies. [`server/THIRD_PARTY_NOTICES.md`](server/THIRD_PARTY_NOTICES.md) lists each with its version, license and license text; `npm run build` writes it, CI checks that it matches the build, and the npm package ships it. They are MIT, ISC, BSD-3-Clause or Apache-2.0 licensed, except:
 
 - the CMMN font (`cmmn-font`): SIL Open Font License 1.1
 - the Font Awesome icons the properties panel draws (`@fortawesome/free-solid-svg-icons`): CC BY 4.0 for the icons, MIT for the code
