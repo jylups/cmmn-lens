@@ -34,7 +34,10 @@ const CONTENT_TYPES = {
   '.json': 'application/json; charset=utf-8'
 };
 
-const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events))?$/;
+const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events|selection))?$/;
+
+/** The largest selection a page may post. */
+const MAX_SELECTION_BYTES = 64 * 1024;
 
 /** How often an idle event stream gets a comment, so nothing in between closes it. */
 const KEEPALIVE_MS = 25_000;
@@ -48,6 +51,9 @@ const KEEPALIVE_MS = 25_000;
  * Each view follows its file: the page subscribes to `/view/<id>/events`, a
  * stream of server-sent `state` events (`{ version, exists }`), one on connect
  * and one each time the file's content changes or it disappears or comes back.
+ *
+ * The page posts the user's selection to `/view/<id>/selection` as JSON
+ * (`{ ids }`); `selection()` returns the newest.
  */
 export class ViewServer {
   /**
@@ -80,7 +86,13 @@ export class ViewServer {
     const isReused = Boolean(view);
 
     if (!view) {
-      view = { id: randomBytes(6).toString('hex'), path: realPath, name: basename(realPath), clients: new Set() };
+      view = {
+        id: randomBytes(6).toString('hex'),
+        path: realPath,
+        name: basename(realPath),
+        clients: new Set(),
+        selection: { ids: [], at: 0 }
+      };
       view.follower = new FileFollower(realPath, state => this.broadcast(view, state));
       await view.follower.start();
       this.viewsByPath.set(realPath, view);
@@ -88,6 +100,30 @@ export class ViewServer {
     }
 
     return { url: this.viewUrl(view), path: realPath, isReused };
+  }
+
+  /**
+   * The selection of a view: of the file given, or else of the view whose
+   * selection changed last.
+   *
+   * @param {string} [path] absolute, or relative to `baseDir`
+   * @returns {Promise<{ path: string, name: string, ids: string[] } | null>}
+   *   null when no view is open (for that file)
+   */
+  async selection(path) {
+    let view;
+
+    if (path) {
+      view = this.viewsByPath.get(await resolveCmmnFile(this.baseDir, path));
+    } else {
+      for (const candidate of this.viewsById.values()) {
+        if (!view || candidate.selection.at > view.selection.at) {
+          view = candidate;
+        }
+      }
+    }
+
+    return view ? { path: view.path, name: view.name, ids: view.selection.ids } : null;
   }
 
   viewUrl(view) {
@@ -170,10 +206,6 @@ export class ViewServer {
   }
 
   async handle(request, response) {
-    if (request.method !== 'GET' && request.method !== 'HEAD') {
-      return send(response, 405, 'Method not allowed', { Allow: 'GET, HEAD' });
-    }
-
     const host = request.headers.host;
 
     if (host !== `127.0.0.1:${this.port}` && host !== `localhost:${this.port}`) {
@@ -181,6 +213,14 @@ export class ViewServer {
     }
 
     const url = new URL(request.url, this.origin());
+    const match = VIEW_PATH.exec(url.pathname);
+    const isSelection = match?.[2] === 'selection';
+    const allowed = isSelection ? ['POST'] : ['GET', 'HEAD'];
+
+    if (!allowed.includes(request.method)) {
+      return send(response, 405, 'Method not allowed', { Allow: allowed.join(', ') });
+    }
+
     const asset = ASSETS.get(url.pathname);
 
     if (asset) {
@@ -192,7 +232,6 @@ export class ViewServer {
       });
     }
 
-    const match = VIEW_PATH.exec(url.pathname);
     const view = match && this.viewsById.get(match[1]);
 
     if (!view) {
@@ -201,6 +240,10 @@ export class ViewServer {
 
     if (!this.isToken(url.searchParams.get('t'))) {
       return send(response, 403, 'Forbidden');
+    }
+
+    if (isSelection) {
+      return this.receiveSelection(request, response, view);
     }
 
     if (match[2] === 'events') {
@@ -227,13 +270,50 @@ export class ViewServer {
       name: view.name,
       path: view.path,
       diagramUrl: `/view/${view.id}/diagram?t=${this.token}`,
-      eventsUrl: `/view/${view.id}/events?t=${this.token}`
+      eventsUrl: `/view/${view.id}/events?t=${this.token}`,
+      selectionUrl: `/view/${view.id}/selection?t=${this.token}`
     });
 
     return send(response, 200, page, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store'
     });
+  }
+
+  /** Stores the selection a page posts: `{ ids: string[] }`. */
+  async receiveSelection(request, response, view) {
+    if (!/^application\/json\b/.test(request.headers['content-type'] ?? '')) {
+      return send(response, 415, 'Send the selection as application/json');
+    }
+
+    const chunks = [];
+    let size = 0;
+
+    for await (const chunk of request) {
+      size += chunk.length;
+
+      if (size > MAX_SELECTION_BYTES) {
+        return send(response, 413, 'Selection too large');
+      }
+
+      chunks.push(chunk);
+    }
+
+    let ids;
+
+    try {
+      ({ ids } = JSON.parse(Buffer.concat(chunks).toString('utf8')));
+    } catch {
+      return send(response, 400, 'The selection is not JSON');
+    }
+
+    if (!Array.isArray(ids) || !ids.every(id => typeof id === 'string')) {
+      return send(response, 400, 'The selection needs ids, a list of strings');
+    }
+
+    view.selection = { ids: [...new Set(ids)], at: Date.now() };
+
+    return send(response, 204, '');
   }
 
   /** Opens a page's event stream and sends the file's current state. */

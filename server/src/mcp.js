@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { relative } from 'node:path';
 
@@ -5,6 +6,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { CMMN_EXTENSIONS, resolveCmmnFile } from './paths.js';
+import { describeSelection } from './selection.js';
 import { validateFile } from './validate.js';
 
 const { version } = createRequire(import.meta.url)('../package.json');
@@ -101,6 +103,67 @@ export function createMcpServer(views) {
     return {
       content: [{ type: 'text', text: formatValidation(shown, result) }],
       structuredContent: { path: file, ...result }
+    };
+  });
+
+  server.registerTool('get_selection', {
+    title: 'Get the selection in a CMMN viewer',
+    description:
+      'Returns the elements the user has selected in a cmmn-lens viewer, described from the file as it is now: ' +
+      'id, type, name, the attributes set (Flowable ones included), the task or other item a plan item stands for, ' +
+      'its entry and exit criteria with their sentries, and the stage it is in. ' +
+      'Call it when the user refers to "this", "the selected task" or "what I selected". ' +
+      'Without a path, it reads the viewer whose selection changed last.',
+    inputSchema: {
+      path: z.string().min(1).optional().describe('The CMMN file whose viewer to read; the last one used if left out')
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false
+    }
+  }, async ({ path }) => {
+    let selection;
+
+    try {
+      selection = await views.selection(path);
+    } catch (error) {
+      return { content: [{ type: 'text', text: error.message }], isError: true };
+    }
+
+    if (!selection) {
+      return { content: [{ type: 'text', text: path ? `No viewer is open for ${path}.` : 'No viewer is open. Open one with open_view.' }] };
+    }
+
+    const shown = relative(views.baseDir, selection.path) || selection.path;
+
+    if (!selection.ids.length) {
+      return { content: [{ type: 'text', text: `Nothing is selected in the viewer of ${shown}.` }] };
+    }
+
+    let elements;
+
+    try {
+      elements = await describeSelection(await readFile(selection.path, 'utf8'), selection.ids);
+    } catch (error) {
+      return {
+        content: [{
+          type: 'text',
+          text: `${shown} can't be read as CMMN right now (${error.message.split('\n')[0]}). The selected ids are: ${selection.ids.join(', ')}.`
+        }]
+      };
+    }
+
+    const summary = elements.map(element => {
+      const name = element.name ?? element.definition?.name;
+
+      return name ? `${element.id} ("${name}")` : element.id;
+    }).join(', ');
+
+    return {
+      content: [{
+        type: 'text',
+        text: `Selected in ${shown}: ${summary}\n${JSON.stringify(elements, null, 2)}`
+      }]
     };
   });
 

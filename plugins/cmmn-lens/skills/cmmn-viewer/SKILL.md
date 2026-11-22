@@ -5,12 +5,13 @@ description: Show a local CMMN (.cmmn) case model in the cmmn-lens viewer while 
 
 # Showing a CMMN model while you work on it
 
-The cmmn-lens MCP server has two tools for local CMMN files:
+The cmmn-lens MCP server has these tools for local CMMN files:
 
 - `open_view` opens a viewer for a file and returns its URL on `localhost`. The page follows the file: each time the file changes, the diagram updates within a second, keeping the user's zoom and position. Calling it again for the same file returns the same URL (`isReused: true`).
 - `validate` parses a file the way the viewer does, with the CMMN and Flowable descriptors, and lists the problems with their element ids and lines.
+- `get_selection` returns the elements the user has selected in a viewer, described from the file as it is now: the task or other item a plan item stands for, its attributes (Flowable ones included), its entry and exit criteria with their sentries, and its stage.
 
-Both take a path, absolute or relative to the working directory, of a `.cmmn` or `.xml` file.
+They take a path, absolute or relative to the working directory, of a `.cmmn` or `.xml` file; for `get_selection` it is optional (the viewer used last).
 
 ## When you start on a file
 
@@ -23,6 +24,10 @@ As soon as you work on a local `.cmmn` file, whether you read it to explain it, 
 3. Don't open the view again for the same file in the same session: the page already follows every change. If the user closed it, give them the URL again.
 
 For a new file, write it first (with a diagram, see below), then open the view.
+
+## When the user points at the diagram
+
+When the user refers to part of the model without naming it ("this task", "the selected one", "what I clicked", "what does this do?"), call `get_selection` and answer about the elements it returns. Use their ids when you edit them. If nothing is selected, ask the user to click the element in the view. The selection stays across updates of the file, so after an edit it still names the same elements.
 
 ## After each edit
 

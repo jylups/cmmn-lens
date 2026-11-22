@@ -7,10 +7,11 @@
  * @param {string} options.path the full path, shown on hover
  * @param {string} options.diagramUrl where the page fetches the file's XML
  * @param {string} options.eventsUrl the stream that says when the file changes
+ * @param {string} options.selectionUrl where the page posts the user's selection
  * @returns {string}
  */
-export function renderPage({ name, path, diagramUrl, eventsUrl }) {
-  const config = jsonForScript({ name, diagramUrl, eventsUrl, flowableUrl: '/assets/flowable.json' });
+export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl }) {
+  const config = jsonForScript({ name, diagramUrl, eventsUrl, selectionUrl, flowableUrl: '/assets/flowable.json' });
 
   return `<!doctype html>
 <html lang="en">

@@ -21,6 +21,12 @@
   var fileState = null;
   var isLoading = false;
 
+  // the user's selection, as the semantic ids of the selected elements, kept
+  // across re-imports and posted to the server when it changes
+  var selectedIds = [];
+  var isImporting = false;
+  var postTimer = null;
+
   function setStatus(text, kind) {
     statusEl.textContent = text;
     statusEl.setAttribute('data-kind', kind || 'ok');
@@ -136,9 +142,79 @@
     canvas.viewbox({ x: view.x, y: view.y, width: size.width / view.scale, height: size.height / view.scale });
   }
 
+  /** The semantic ids of selected diagram elements, labels counted as their element. */
+  function idsOf(elements) {
+    var ids = [];
+
+    elements.forEach(function(element) {
+      var id = element.businessObject && element.businessObject.id;
+
+      if (id && ids.indexOf(id) < 0) {
+        ids.push(id);
+      }
+    });
+
+    return ids;
+  }
+
+  function sameIds(a, b) {
+    return a.length === b.length && a.every(function(id, index) { return id === b[index]; });
+  }
+
+  /** Tells the server what is selected, once the selection has settled. */
+  function postSelection() {
+    clearTimeout(postTimer);
+    postTimer = setTimeout(function() {
+      fetch(config.selectionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedIds })
+      }).catch(function(error) {
+        console.warn('cmmn-lens: posting the selection failed', error);
+      });
+    }, 100);
+  }
+
+  function onSelectionChanged(event) {
+    // an import clears the selection; that is not the user's doing
+    if (isImporting) {
+      return;
+    }
+
+    var ids = idsOf(event.newSelection);
+
+    if (!sameIds(ids, selectedIds)) {
+      selectedIds = ids;
+      postSelection();
+    }
+  }
+
+  /** Selects again, after an import, the elements that are still there. */
+  function restoreSelection() {
+    var elements = viewer.get('elementRegistry').filter(function(element) {
+      return !element.labelTarget && element.businessObject && selectedIds.indexOf(element.businessObject.id) >= 0;
+    });
+
+    viewer.get('selection').select(elements);
+
+    var ids = idsOf(elements);
+
+    if (!sameIds(ids, selectedIds)) {
+      selectedIds = ids;
+      postSelection();
+    }
+  }
+
   function importXML(xml) {
+    isImporting = true;
+
     return new Promise(function(resolve) {
       viewer.importXML(xml, function(error, warnings) {
+        if (!error) {
+          restoreSelection();
+        }
+
+        isImporting = false;
         resolve({ error: error, warnings: warnings || [] });
       });
     });
@@ -281,6 +357,8 @@
     window.addEventListener('resize', function() {
       viewer.get('canvas').resized();
     });
+
+    viewer.on('selection.changed', onSelectionChanged);
 
     follow();
   }).catch(function(error) {
