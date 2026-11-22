@@ -1,6 +1,7 @@
 // Builds what the page loads in edit mode into public/build/:
 // editor.js (the Modeler and the Flowable properties panel, bundled) and
-// properties-panel.css (the panel's LESS styles, compiled).
+// properties-panel.css (the panel's LESS styles, compiled); and writes
+// THIRD_PARTY_NOTICES.md for every package the page gets code or files from.
 //
 //   npm run build --workspace server
 
@@ -12,13 +13,15 @@ import { fileURLToPath } from 'node:url';
 import { build } from 'esbuild';
 import less from 'less';
 
+import { writeNotices } from './notices.mjs';
+
 const require = createRequire(import.meta.url);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'public', 'build');
 
 await mkdir(out, { recursive: true });
 
-await build({
+const result = await build({
   entryPoints: [join(root, 'client', 'editor.js')],
   outfile: join(out, 'editor.js'),
   bundle: true,
@@ -28,6 +31,8 @@ await build({
   minify: true,
   legalComments: 'eof',
   define: { 'process.env.NODE_ENV': '"production"' },
+  metafile: true,
+  absWorkingDir: root,
   logLevel: 'warning'
 });
 
@@ -39,4 +44,6 @@ const { css } = await less.render(await readFile(lessFile, 'utf8'), {
 
 await writeFile(join(out, 'properties-panel.css'), css);
 
-console.log('built public/build/editor.js and public/build/properties-panel.css');
+const notices = await writeNotices({ root, inputs: result.metafile.inputs, out: join(root, 'THIRD_PARTY_NOTICES.md') });
+
+console.log(`built public/build/editor.js and public/build/properties-panel.css; ${notices.file} lists ${notices.count} packages`);

@@ -10,7 +10,8 @@
   },
   "files": [
     "src",
-    "public"
+    "public",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "engines": {
     "node": ">=22"
