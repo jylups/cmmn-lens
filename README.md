@@ -2,7 +2,7 @@
 
 A Claude Code plugin that shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
 
-**Status:** in development. The plugin has the `cmmn-viewer` skill, and `server/` has the viewer and its tools (`open_view`, `validate`, `get_selection`, `highlight`), but the plugin doesn't start the server yet: that comes once the server is published to npm. Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
+**Status:** in development; the first release is 0.1.0. The plugin starts its server with `npx @jylups/cmmn-lens-server@0.1.0`, which works once that version is on npm (it is published with the first release, when this repository goes public). Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
 
 ## What it will run
 
@@ -12,6 +12,10 @@ A Claude Code plugin that shows the local Flowable CMMN file Claude is editing i
 - While the server runs, it keeps a small file (its port, token and project folder) in a `cmmn-lens` folder under the system's temporary folder, readable only by you, so the plugin's prompt hook can find it.
 - Before each prompt, a hook (Node) asks the running server for your selection in the viewer and adds it to the prompt's context. It can be turned off with the plugin's option.
 - It sends nothing to other servers and collects no usage data.
+
+## Requirements
+
+Node 22 or later on the machine that runs Claude Code (the plugin's server and its prompt hook run with Node).
 
 ## Install
 
@@ -46,7 +50,8 @@ open it in the viewer before you change it, and validate it after each edit.
 |---|---|
 | `.claude-plugin/marketplace.json` | The marketplace that lists the plugin |
 | `plugins/cmmn-lens/` | The plugin folder that Claude Code installs: the `cmmn-viewer` skill and the prompt hook |
-| `server/` | The MCP server and the viewer page (`@jylups/cmmn-lens-server`, not published yet) |
+| `server/` | The MCP server and the viewer page (`@jylups/cmmn-lens-server` on npm) |
+| `scripts/` | Release helpers: set the version, check a release tag, print a changelog entry |
 | `tests/` | Checks of the manifests |
 
 ## Development
@@ -92,6 +97,8 @@ While it runs, the server lists itself (port, token, project folder) in a regist
 `get_changes`: when the user saves from the viewer, the server compares the version it replaces with the new one, element by element (added, removed and changed elements, with each change before and after, and a count of moved shapes), and keeps the result until the agent has seen it. The tool returns it once; the prompt hook adds it to the next prompt.
 
 To try it, open a Claude Code session in this folder: `.mcp.json` registers the server as `cmmn-lens-dev` (approve it when asked), and `server/test/fixtures/claim.cmmn` is a small sample. The plugin itself starts the server from the published npm package once that exists.
+
+Releases: see [RELEASING.md](RELEASING.md) and [CHANGELOG.md](CHANGELOG.md).
 
 Load the plugin from the working copy for one session:
 

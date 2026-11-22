@@ -5,13 +5,11 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { createMcpServer } from './mcp.js';
 import { ViewServer } from './views.js';
 
-// listed in the registry so the plugin's prompt hook can read the selection;
-// CLAUDE_PROJECT_DIR is set for plugin MCP servers and hooks alike
-const views = new ViewServer({
-  baseDir: process.cwd(),
-  isRegistered: true,
-  projectDir: process.env.CLAUDE_PROJECT_DIR || process.cwd()
-});
+// CLAUDE_PROJECT_DIR is set for plugin MCP servers and hooks alike: relative
+// paths resolve against the project, wherever the server was started, and the
+// registry lists the server under it, so the plugin's prompt hook finds it
+const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+const views = new ViewServer({ baseDir: projectDir, isRegistered: true, projectDir });
 const server = createMcpServer(views);
 const transport = new StdioServerTransport();
 

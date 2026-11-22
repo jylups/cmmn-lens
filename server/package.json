@@ -1,9 +1,26 @@
 {
   "name": "@jylups/cmmn-lens-server",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
   "description": "MCP server for the cmmn-lens plugin: serves an interactive viewer for local CMMN files on localhost.",
+  "keywords": [
+    "cmmn",
+    "flowable",
+    "mcp",
+    "case-management",
+    "viewer"
+  ],
+  "homepage": "https://github.com/jylups/cmmn-lens#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jylups/cmmn-lens.git",
+    "directory": "server"
+  },
+  "bugs": "https://github.com/jylups/cmmn-lens/issues",
   "license": "MIT",
+  "author": {
+    "name": "jylups",
+    "url": "https://github.com/jylups"
+  },
   "type": "module",
   "bin": {
     "cmmn-lens-server": "src/index.js"
@@ -16,6 +33,13 @@
   "engines": {
     "node": ">=22"
   },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "prepack": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@jylups/cmmn-js": "0.24.1",
     "@jylups/cmmn-moddle": "6.1.1",
@@ -27,8 +51,5 @@
   "devDependencies": {
     "esbuild": "0.28.2",
     "less": "4.9.1"
-  },
-  "scripts": {
-    "build": "node scripts/build.mjs"
   }
 }
