@@ -33,7 +33,7 @@ While the repository is private, only people with access to it can install the p
 
 ## Development
 
-Requires Node 20 or later.
+Requires Node 22 or later.
 
 ```bash
 npm install
