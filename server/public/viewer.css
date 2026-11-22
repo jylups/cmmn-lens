@@ -266,3 +266,28 @@ body {
 .properties.is-collapsed .properties-editor {
   display: none;
 }
+
+.conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid #fcd34d;
+  background: #fef3c7;
+  color: #78350f;
+}
+
+.conflict[hidden] {
+  display: none;
+}
+
+.conflict button {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 10px;
+  border: 1px solid #d97706;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}

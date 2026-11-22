@@ -1,6 +1,6 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmod, copyFile, mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises';
+import { chmod, copyFile, mkdtemp, readdir, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -54,7 +54,7 @@ describe('saving from the page', () => {
 
   test('writes the model, keeps the file\'s permissions, and answers its version', async () => {
     const xml = CLAIM.replace('Approve the claim', 'Sign off the claim');
-    const response = await post(JSON.stringify({ xml }));
+    const response = await post(JSON.stringify({ xml, baseVersion: versionOf(CLAIM) }));
 
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { version: versionOf(xml) });
@@ -70,9 +70,57 @@ describe('saving from the page', () => {
     assert.equal((await post('{"xml":"<x/>"}', { type: 'text/plain' })).status, 415);
     assert.equal((await post('not json')).status, 400);
     assert.equal((await post('{"xml":"  "}')).status, 400);
+    assert.equal((await post('{"xml":"<x/>"}')).status, 400, 'without baseVersion');
     assert.equal((await post(JSON.stringify({ xml: 'x'.repeat(11 * 1024 * 1024) }))).status, 413);
     assert.equal((await fetch(saveUrl())).status, 405);
     assert.equal(await readFile(file, 'utf8'), before);
+  });
+
+  test('refuses a save made on an older version, and writes nothing (the agent wrote first)', async () => {
+    const base = await readFile(file, 'utf8');
+    const agents = base.replace('Review the claim', 'Check the claim');
+
+    await writeFile(file, agents);
+
+    const users = base.replace('Claim handled', 'Claim closed');
+    const response = await post(JSON.stringify({ xml: users, baseVersion: versionOf(base) }));
+
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { version: versionOf(agents) });
+    assert.equal(await readFile(file, 'utf8'), agents, 'the agent\'s change is kept');
+  });
+
+  test('writes over a newer version once the user chose to keep their edits', async () => {
+    const onDisk = await readFile(file, 'utf8');
+    const users = onDisk.replace('Handle a claim', 'Handle a claim quickly');
+    const response = await post(JSON.stringify({ xml: users, baseVersion: versionOf(onDisk) }));
+
+    assert.equal(response.status, 200);
+    assert.equal(await readFile(file, 'utf8'), users);
+  });
+
+  test('a later change by the agent is not refused: the page reloads it (the user saved first)', async () => {
+    const saved = await readFile(file, 'utf8');
+    const agents = saved.replace('Handle a claim quickly', 'Handle a claim');
+
+    await writeFile(file, agents);
+
+    // the page, with no unsaved edits, reloads; a save from the old version is refused
+    const stale = await post(JSON.stringify({ xml: saved, baseVersion: versionOf(saved) }));
+
+    assert.equal(stale.status, 409);
+    assert.equal(await readFile(file, 'utf8'), agents);
+  });
+
+  test('puts back a file that was deleted', async () => {
+    const xml = await readFile(file, 'utf8');
+
+    await unlink(file);
+
+    const response = await post(JSON.stringify({ xml, baseVersion: versionOf(xml) }));
+
+    assert.equal(response.status, 200);
+    assert.equal(await readFile(file, 'utf8'), xml);
   });
 });
 

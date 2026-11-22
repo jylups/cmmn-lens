@@ -31,6 +31,12 @@
   var isSaving = false;
   var editorLoading = null;
 
+  // a change to the file while there are unsaved edits: the version the
+  // file holds, and the version the user chose to overwrite ("Keep my edits")
+  var conflictEl = document.getElementById('conflict');
+  var conflictVersion = null;
+  var overwriteVersion = null;
+
   // the version of the file the page shows, and the XML of the last version
   // that opened, which the page goes back to when a new version fails
   var shownVersion = null;
@@ -476,8 +482,10 @@
     }
 
     if (mode === 'edit' && isDirty) {
-      // the unsaved edits stay; what to do about the change is #12's
-      setStatus('The file changed on disk. Saving now replaces that change.', 'warning');
+      // the unsaved edits stay until the user chooses
+      if (fileState.version !== overwriteVersion && fileState.version !== conflictVersion) {
+        showConflict(fileState.version);
+      }
 
       return;
     }
@@ -566,6 +574,37 @@
     document.body.classList.toggle('is-editing', mode === 'edit');
     propertiesBodyEl.hidden = mode === 'edit';
     propertiesEditorEl.hidden = mode !== 'edit';
+  }
+
+  /** Asks the user what to do about a change to the file under unsaved edits. */
+  function showConflict(version) {
+    conflictVersion = version;
+    conflictEl.hidden = false;
+    setStatus('Unsaved changes. The file changed on disk.', 'warning');
+  }
+
+  function hideConflict() {
+    conflictEl.hidden = true;
+    conflictVersion = null;
+  }
+
+  /** Drops the unsaved edits and shows what the file holds. */
+  function loadFileVersion() {
+    hideConflict();
+    overwriteVersion = null;
+    isDirty = false;
+    updateButtons();
+
+    // force a reload even if the page thinks it shows that version
+    shownVersion = null;
+    sync();
+  }
+
+  /** Keeps the unsaved edits; the next save replaces the file's version. */
+  function keepEdits() {
+    overwriteVersion = conflictVersion;
+    hideConflict();
+    setStatus('Unsaved changes. Saving replaces the change on disk.', 'warning');
   }
 
   function markDirty() {
@@ -667,6 +706,9 @@
       return;
     }
 
+    hideConflict();
+    overwriteVersion = null;
+
     switchTo('view').then(function() {
       setStatus('Opened');
 
@@ -696,13 +738,29 @@
       fetch(config.saveUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ xml: xml })
+        body: JSON.stringify({ xml: xml, baseVersion: overwriteVersion || shownVersion })
       }).then(function(response) {
+        if (response.status === 409) {
+          // the file changed since the edits began: nothing was written
+          return response.json().then(function(result) {
+            showConflict(result.version);
+            setStatus('Not saved: the file changed on disk. Choose which version to keep.', 'error');
+
+            return null;
+          });
+        }
+
         return response.ok ? response.json() : response.text().then(function(text) { throw new Error(text); });
       }).then(function(result) {
+        if (!result) {
+          return;
+        }
+
         lastGood = xml;
         shownVersion = result.version;
+        overwriteVersion = null;
         isDirty = false;
+        hideConflict();
         setStatus('Saved ' + time());
       }).catch(function(saveError) {
         setStatus('Couldn\'t save: ' + saveError.message, 'error');
@@ -737,6 +795,8 @@
     editButton.addEventListener('click', enterEdit);
     saveButton.addEventListener('click', save);
     doneButton.addEventListener('click', leaveEdit);
+    document.getElementById('conflict-reload').addEventListener('click', loadFileVersion);
+    document.getElementById('conflict-keep').addEventListener('click', keepEdits);
 
     document.addEventListener('keydown', function(event) {
       if ((event.metaKey || event.ctrlKey) && event.key === 's' && mode === 'edit') {

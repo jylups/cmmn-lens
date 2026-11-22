@@ -433,9 +433,15 @@ export class ViewServer {
   }
 
   /**
-   * Writes the model the page saves (`{ xml }`) to the view's file, and
-   * answers `{ version }`, the saved content's version. The file is replaced
-   * in one step (a new file renamed over it), keeping its permissions.
+   * Writes the model the page saves (`{ xml, baseVersion }`) to the view's
+   * file, and answers `{ version }`, the saved content's version. The file is
+   * replaced in one step (a new file renamed over it), keeping its
+   * permissions.
+   *
+   * `baseVersion` is the version of the file the edits were made on (or the
+   * newer one the user chose to overwrite). When the file holds another
+   * version now, someone else changed it: the save is refused with 409 and
+   * `{ version }` of what the file holds, so no change is lost unseen.
    */
   async save(request, response, view) {
     const body = await readJson(request, response, MAX_SAVE_BYTES);
@@ -446,6 +452,25 @@ export class ViewServer {
 
     if (typeof body?.xml !== 'string' || !body.xml.trim()) {
       return send(response, 400, 'The save needs xml, the model as a string');
+    }
+
+    if (typeof body.baseVersion !== 'string') {
+      return send(response, 400, 'The save needs baseVersion, the version the edits were made on');
+    }
+
+    let current;
+
+    try {
+      current = versionOf(await readFile(view.path));
+    } catch {
+      // the file is gone: saving puts it back
+      current = null;
+    }
+
+    if (current !== null && current !== body.baseVersion) {
+      return send(response, 409, JSON.stringify({ version: current }), {
+        'Content-Type': 'application/json; charset=utf-8'
+      });
     }
 
     const temporary = `${view.path}.cmmn-lens-${randomBytes(4).toString('hex')}.tmp`;
