@@ -2,7 +2,7 @@
 
 A Claude Code plugin that shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
 
-**Status:** in development. The plugin has the `cmmn-viewer` skill, and `server/` has the viewer and its tools (`open_view`, `validate`, `get_selection`), but the plugin doesn't start the server yet: that comes once the server is published to npm. Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
+**Status:** in development. The plugin has the `cmmn-viewer` skill, and `server/` has the viewer and its tools (`open_view`, `validate`, `get_selection`, `highlight`), but the plugin doesn't start the server yet: that comes once the server is published to npm. Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
 
 ## What it will run
 
@@ -68,7 +68,7 @@ claude plugin validate --strict plugins/cmmn-lens
 
 ### The viewer server
 
-`server/` is an MCP server (stdio) with three tools so far: `open_view`, `validate` and `get_selection`.
+`server/` is an MCP server (stdio) with four tools so far: `open_view`, `validate`, `get_selection` and `highlight`.
 
 `open_view`: given the path of a `.cmmn` file, it starts a web server on `127.0.0.1` with a random port, and returns the URL of a page that shows the diagram with the cmmn-js viewer and the Flowable extensions. Calling it again for the same file returns the same URL. Every page and file request needs the server's random token, and the web server stops when the MCP server exits.
 
@@ -79,6 +79,8 @@ The page follows the file: the server watches the file's folder and tells the pa
 While it runs, the server lists itself (port, token, project folder) in a registry folder under the system's temporary folder, readable only by you, and removes the entry when it stops. The plugin's `UserPromptSubmit` hook (`plugins/cmmn-lens/hooks/selection-context.mjs`) reads the servers of the session's project, asks each for its selection (`GET /selection`, with the token), and adds the newest to the prompt's context.
 
 `get_selection`: the page posts the user's selection to the server as it changes, and keeps it across updates of the file. The tool describes the selected elements from the file as it is now: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. Without a path it reads the viewer whose selection changed last.
+
+`highlight`: marks elements in the view and scrolls them into view, until the file changes again. A task, stage or milestone is marked through the plan items that use it, and a sentry through its criteria. The mark applies to the version of the file it was made for, so a highlight sent right after an edit shows once the page has that version.
 
 To try it, open a Claude Code session in this folder: `.mcp.json` registers the server as `cmmn-lens-dev` (approve it when asked), and `server/test/fixtures/claim.cmmn` is a small sample. The plugin itself starts the server from the published npm package once that exists.
 

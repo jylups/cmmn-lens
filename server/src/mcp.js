@@ -131,7 +131,62 @@ export function createMcpServer(views) {
     return { content: [{ type: 'text', text: formatSelection(selection, views.baseDir, path) }] };
   });
 
+  server.registerTool('highlight', {
+    title: 'Highlight elements in a CMMN viewer',
+    description:
+      'Marks elements in a cmmn-lens viewer and scrolls them into view, until the file changes again. ' +
+      'Use it after an edit to show the user what you changed, or to point at elements you are talking about. ' +
+      'Takes element ids: plan items, criteria, on parts and the case plan model are marked themselves; a task, ' +
+      'stage, milestone or other plan item definition is marked through the plan items that use it, a sentry through ' +
+      'its criteria. An empty list clears the marks. Without a path, it uses the viewer last opened or selected in.',
+    inputSchema: {
+      ids: z.array(z.string().min(1)).describe('The ids of the elements to mark'),
+      path: z.string().min(1).optional().describe('The CMMN file whose viewer to use; the last one used if left out')
+    },
+    annotations: {
+      readOnlyHint: true,
+      openWorldHint: false
+    }
+  }, async ({ ids, path }) => {
+    let result;
+
+    try {
+      result = await views.highlight(path, ids);
+    } catch (error) {
+      return { content: [{ type: 'text', text: error.message.split('\n')[0] }], isError: true };
+    }
+
+    return { content: [{ type: 'text', text: formatHighlight(result, views.baseDir, path, ids) }] };
+  });
+
   return server;
+}
+
+/** A highlight result (ViewServer.highlight) as text. */
+export function formatHighlight(result, baseDir, path, ids) {
+  if (!result) {
+    return path ? `No viewer is open for ${path}.` : 'No viewer is open. Open one with open_view.';
+  }
+
+  const shown = relative(baseDir, result.path) || result.path;
+
+  if (!ids.length) {
+    return `Cleared the highlight in ${shown}.`;
+  }
+
+  const lines = [
+    result.drawn.length ? `Highlighted ${result.drawn.join(', ')} in ${shown}.` : `Nothing to highlight in ${shown}.`
+  ];
+
+  if (result.unknown.length) {
+    lines.push(`Not in the file: ${result.unknown.join(', ')}.`);
+  }
+
+  if (result.undrawn.length) {
+    lines.push(`Not drawn in the diagram: ${result.undrawn.join(', ')}.`);
+  }
+
+  return lines.join(' ');
 }
 
 /** The validation result as text, one line per problem. */

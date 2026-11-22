@@ -6,6 +6,7 @@ import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { FileFollower, versionOf } from './follow.js';
+import { resolveDrawnIds } from './highlight.js';
 import { resolveCmmnFile } from './paths.js';
 import { register, unregister } from './registry.js';
 import { describeSelection } from './selection.js';
@@ -58,6 +59,10 @@ const KEEPALIVE_MS = 25_000;
  * (`{ ids }`); `selection()` returns the newest, and `GET /selection`
  * describes it for the plugin's hooks, which find the server through the
  * registry (registry.js) when `isRegistered` is set.
+ *
+ * `highlight()` marks elements in a view: the stream sends a `highlight` event
+ * (`{ ids, version }`), which applies to that version of the file; the page
+ * clears it when a newer version arrives.
  */
 export class ViewServer {
   /**
@@ -103,7 +108,9 @@ export class ViewServer {
         path: realPath,
         name: basename(realPath),
         clients: new Set(),
-        selection: { ids: [], at: 0 }
+        selection: { ids: [], at: 0 },
+        highlight: null,
+        touched: 0
       };
       view.follower = new FileFollower(realPath, state => this.broadcast(view, state));
       await view.follower.start();
@@ -111,7 +118,59 @@ export class ViewServer {
       this.viewsById.set(view.id, view);
     }
 
+    view.touched = Date.now();
+
     return { url: this.viewUrl(view), path: realPath, isReused };
+  }
+
+  /**
+   * The view of a file, or else the view last opened or selected in.
+   *
+   * @param {string} [path]
+   */
+  async pickView(path) {
+    if (path) {
+      return this.viewsByPath.get(await resolveCmmnFile(this.baseDir, path)) ?? null;
+    }
+
+    let view = null;
+
+    for (const candidate of this.viewsById.values()) {
+      if (!view || candidate.touched > view.touched) {
+        view = candidate;
+      }
+    }
+
+    return view;
+  }
+
+  /**
+   * Marks elements in a view and scrolls to them, until the file changes
+   * again. Ids of elements the diagram doesn't draw (a task, a sentry) mark
+   * the shapes that stand for them; an empty list clears the marks.
+   *
+   * @param {string|undefined} path the file, or the view last used
+   * @param {string[]} ids
+   * @returns {Promise<null | { path: string, name: string, drawn: string[], unknown: string[], undrawn: string[] }>}
+   *   null when no view is open (for that file)
+   */
+  async highlight(path, ids) {
+    const view = await this.pickView(path);
+
+    if (!view) {
+      return null;
+    }
+
+    const xml = await readFile(view.path, 'utf8');
+    const resolved = ids.length ? await resolveDrawnIds(xml, ids) : { drawn: [], unknown: [], undrawn: [] };
+
+    view.highlight = { ids: resolved.drawn, version: versionOf(xml) };
+
+    for (const client of view.clients) {
+      sendEvent(client, 'highlight', view.highlight);
+    }
+
+    return { path: view.path, name: view.name, ...resolved };
   }
 
   /**
@@ -215,6 +274,11 @@ export class ViewServer {
 
   /** Sends a view's file state to every page that shows it. */
   broadcast(view, state) {
+    // a highlight lasts until the next change of the file
+    if (view.highlight && view.highlight.version !== state.version) {
+      view.highlight = null;
+    }
+
     for (const client of view.clients) {
       sendEvent(client, 'state', state);
     }
@@ -376,6 +440,7 @@ export class ViewServer {
     }
 
     view.selection = { ids: [...new Set(ids)], at: Date.now() };
+    view.touched = view.selection.at;
 
     return send(response, 204, '');
   }
@@ -394,6 +459,11 @@ export class ViewServer {
 
     response.write('retry: 2000\n\n');
     sendEvent(response, 'state', view.follower.state);
+
+    if (view.highlight) {
+      sendEvent(response, 'highlight', view.highlight);
+    }
+
     view.clients.add(response);
     request.on('close', () => view.clients.delete(response));
   }

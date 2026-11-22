@@ -9,9 +9,10 @@ The cmmn-lens MCP server has these tools for local CMMN files:
 
 - `open_view` opens a viewer for a file and returns its URL on `localhost`. The page follows the file: each time the file changes, the diagram updates within a second, keeping the user's zoom and position. Calling it again for the same file returns the same URL (`isReused: true`).
 - `validate` parses a file the way the viewer does, with the CMMN and Flowable descriptors, and lists the problems with their element ids and lines.
+- `highlight` marks elements in a viewer and scrolls them into view, until the file changes again.
 - `get_selection` returns the elements the user has selected in a viewer, described from the file as it is now: the task or other item a plan item stands for, its attributes (Flowable ones included), its entry and exit criteria with their sentries, and its stage.
 
-They take a path, absolute or relative to the working directory, of a `.cmmn` or `.xml` file; for `get_selection` it is optional (the viewer used last).
+They take a path, absolute or relative to the working directory, of a `.cmmn` or `.xml` file; for `get_selection` and `highlight` it is optional (the viewer used last).
 
 ## When you start on a file
 
@@ -34,7 +35,10 @@ When the user refers to part of the model without naming it ("this task", "the s
 1. Call `validate` on the file.
 2. Fix every error before you go on: XML that doesn't parse, duplicate ids, and references to elements that don't exist make the model wrong.
 3. Look at the warnings. Fix the ones you caused, such as a misspelled `flowable:` attribute or a plan item with no shape. Mention the others to the user rather than changing what you weren't asked to change.
-4. Don't tell the user to reload the view: it updates by itself.
+4. Call `highlight` with the ids of the elements you added or changed, so the user sees where the change is. A task's or sentry's id is fine: the plan items or criteria that show it are marked. Skip this for a change that touches most of the model.
+5. Don't tell the user to reload the view: it updates by itself.
+
+When you explain part of a model, you can also `highlight` the elements you are talking about.
 
 ## Keep the diagram in step with the model
 

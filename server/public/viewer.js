@@ -27,6 +27,12 @@
   var isImporting = false;
   var postTimer = null;
 
+  // the agent's highlight: the one waiting for its version of the file to be
+  // shown, and the one marked on the canvas
+  var HIGHLIGHT_MARKER = 'cmmn-lens-highlight';
+  var pendingHighlight = null;
+  var shownHighlight = null;
+
   function setStatus(text, kind) {
     statusEl.textContent = text;
     statusEl.setAttribute('data-kind', kind || 'ok');
@@ -230,12 +236,15 @@
     var isFirst = !lastGood;
 
     return importXML(xml).then(function(result) {
+      // the import replaced the elements, and the marks with them
+      shownHighlight = null;
       shownVersion = version;
       showProblems(result.error, result.warnings);
 
       if (!result.error) {
         lastGood = xml;
         restoreViewbox(box);
+        syncHighlight();
 
         var count = result.warnings.length;
         var opened = isFirst ? 'Opened' : 'Updated ' + time();
@@ -258,6 +267,111 @@
         });
       }
     });
+  }
+
+  function elementsOf(ids) {
+    var registry = viewer.get('elementRegistry');
+
+    return ids.map(function(id) { return registry.get(id); }).filter(Boolean);
+  }
+
+  function boundsOf(elements) {
+    var box = null;
+
+    elements.forEach(function(element) {
+      var points = element.waypoints || [
+        { x: element.x, y: element.y },
+        { x: element.x + element.width, y: element.y + element.height }
+      ];
+
+      points.forEach(function(point) {
+        if (!box) {
+          box = { minX: point.x, minY: point.y, maxX: point.x, maxY: point.y };
+        } else {
+          box.minX = Math.min(box.minX, point.x);
+          box.minY = Math.min(box.minY, point.y);
+          box.maxX = Math.max(box.maxX, point.x);
+          box.maxY = Math.max(box.maxY, point.y);
+        }
+      });
+    });
+
+    return box;
+  }
+
+  /**
+   * Brings elements into view: nothing when they are visible, centered at the
+   * same zoom when they fit, zoomed out to fit otherwise.
+   */
+  function scrollTo(elements) {
+    var box = boundsOf(elements);
+
+    if (!box || !hasSize()) {
+      return;
+    }
+
+    var canvas = viewer.get('canvas');
+    var view = canvas.viewbox();
+    var padding = 40 / view.scale;
+    var isVisible = box.minX >= view.x && box.minY >= view.y &&
+      box.maxX <= view.x + view.width && box.maxY <= view.y + view.height;
+
+    if (isVisible) {
+      return;
+    }
+
+    var width = box.maxX - box.minX + 2 * padding;
+    var height = box.maxY - box.minY + 2 * padding;
+
+    if (width <= view.width && height <= view.height) {
+      var centerX = (box.minX + box.maxX) / 2;
+      var centerY = (box.minY + box.maxY) / 2;
+
+      canvas.viewbox({ x: centerX - view.width / 2, y: centerY - view.height / 2, width: view.width, height: view.height });
+    } else {
+      canvas.viewbox({ x: box.minX - padding, y: box.minY - padding, width: width, height: height });
+    }
+  }
+
+  function clearHighlight() {
+    if (shownHighlight) {
+      var canvas = viewer.get('canvas');
+
+      elementsOf(shownHighlight.ids).forEach(function(element) {
+        canvas.removeMarker(element, HIGHLIGHT_MARKER);
+      });
+    }
+
+    shownHighlight = null;
+  }
+
+  /**
+   * Marks the pending highlight once its version of the file is on the
+   * canvas, and drops a marked one when another version has replaced it.
+   */
+  function syncHighlight() {
+    if (shownHighlight && shownHighlight.version !== shownVersion) {
+      clearHighlight();
+    }
+
+    if (!pendingHighlight || pendingHighlight.version !== shownVersion) {
+      return;
+    }
+
+    clearHighlight();
+
+    var highlight = pendingHighlight;
+    var elements = elementsOf(highlight.ids);
+    var canvas = viewer.get('canvas');
+
+    pendingHighlight = null;
+    shownHighlight = highlight;
+
+    elements.forEach(function(element) {
+      canvas.addMarker(element, HIGHLIGHT_MARKER);
+    });
+
+    scrollTo(elements);
   }
 
   function fetchDiagram() {
@@ -314,6 +428,11 @@
   function follow() {
     var events = new EventSource(config.eventsUrl);
     var failedRetries = 0;
+
+    events.addEventListener('highlight', function(event) {
+      pendingHighlight = JSON.parse(event.data);
+      syncHighlight();
+    });
 
     events.addEventListener('state', function(event) {
       fileState = JSON.parse(event.data);
