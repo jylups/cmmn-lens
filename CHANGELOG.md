@@ -4,7 +4,7 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-22)
 
 The first release.
 
