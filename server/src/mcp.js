@@ -159,7 +159,47 @@ export function createMcpServer(views) {
     return { content: [{ type: 'text', text: formatHighlight(result, views.baseDir, path, ids) }] };
   });
 
+  server.registerTool('get_changes', {
+    title: 'Get the changes the user saved in a CMMN viewer',
+    description:
+      'Returns what the user changed and saved in a cmmn-lens viewer since you last looked: elements added, ' +
+      'removed and changed (names, attributes, events, moves between stages), and how many shapes they moved. ' +
+      'Each change is returned once. Call it when the user says they changed the model in the viewer. ' +
+      'Without a path, it reads every open viewer.',
+    inputSchema: {
+      path: z.string().min(1).optional().describe('The CMMN file whose viewer to read; every viewer if left out')
+    },
+    annotations: {
+      readOnlyHint: false,
+      openWorldHint: false
+    }
+  }, async ({ path }) => {
+    let changes;
+
+    try {
+      changes = await views.takeUserChanges(path);
+    } catch (error) {
+      return { content: [{ type: 'text', text: error.message.split('\n')[0] }], isError: true };
+    }
+
+    return { content: [{ type: 'text', text: formatChanges(changes, views.baseDir) }] };
+  });
+
   return server;
+}
+
+/** The user's saved changes (ViewServer.takeUserChanges) as text. */
+export function formatChanges(changes, baseDir) {
+  if (!changes.length) {
+    return 'The user has saved no changes in the viewer since you last looked.';
+  }
+
+  return changes.map(change => {
+    const shown = relative(baseDir, change.path) || change.path;
+    const time = new Date(change.at).toLocaleTimeString();
+
+    return `The user saved changes to ${shown} in the viewer at ${time}:\n${change.text}`;
+  }).join('\n\n');
 }
 
 /** A highlight result (ViewServer.highlight) as text. */
