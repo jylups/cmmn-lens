@@ -1,11 +1,12 @@
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { readFile, realpath, stat } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { basename, dirname, extname, join, resolve } from 'node:path';
+import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { FileFollower, versionOf } from './follow.js';
+import { resolveCmmnFile } from './paths.js';
 import { renderPage } from './page.js';
 
 const require = createRequire(import.meta.url);
@@ -32,9 +33,6 @@ const CONTENT_TYPES = {
   '.css': 'text/css; charset=utf-8',
   '.json': 'application/json; charset=utf-8'
 };
-
-/** The file types a view can be opened for. */
-export const VIEWABLE_EXTENSIONS = ['.cmmn', '.xml'];
 
 const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events))?$/;
 
@@ -74,26 +72,7 @@ export class ViewServer {
    * @returns {Promise<{ url: string, path: string, isReused: boolean }>}
    */
   async open(path) {
-    const absolute = resolve(this.baseDir, path);
-    const extension = extname(absolute).toLowerCase();
-
-    if (!VIEWABLE_EXTENSIONS.includes(extension)) {
-      throw new Error(`${path} is not a CMMN file: the viewer opens ${VIEWABLE_EXTENSIONS.join(' and ')} files.`);
-    }
-
-    let info;
-
-    try {
-      info = await stat(absolute);
-    } catch {
-      throw new Error(`${path} doesn't exist.`);
-    }
-
-    if (!info.isFile()) {
-      throw new Error(`${path} is not a file.`);
-    }
-
-    const realPath = await realpath(absolute);
+    const realPath = await resolveCmmnFile(this.baseDir, path);
 
     await this.start();
 
