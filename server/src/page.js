@@ -6,10 +6,11 @@
  * @param {string} options.name the file name, shown as the title
  * @param {string} options.path the full path, shown on hover
  * @param {string} options.diagramUrl where the page fetches the file's XML
+ * @param {string} options.eventsUrl the stream that says when the file changes
  * @returns {string}
  */
-export function renderPage({ name, path, diagramUrl }) {
-  const config = jsonForScript({ name, diagramUrl, flowableUrl: '/assets/flowable.json' });
+export function renderPage({ name, path, diagramUrl, eventsUrl }) {
+  const config = jsonForScript({ name, diagramUrl, eventsUrl, flowableUrl: '/assets/flowable.json' });
 
   return `<!doctype html>
 <html lang="en">
@@ -28,6 +29,10 @@ export function renderPage({ name, path, diagramUrl }) {
     <span class="file" title="${escapeHtml(path)}">${escapeHtml(name)}</span>
     <span class="status" id="status" role="status">Opening…</span>
   </header>
+  <details class="problems" id="problems" hidden>
+    <summary id="problems-summary"></summary>
+    <ul id="problems-list"></ul>
+  </details>
   <main class="canvas" id="canvas"></main>
   <script id="cmmn-lens-config" type="application/json">${config}</script>
   <script src="/assets/cmmn-navigated-viewer.js"></script>

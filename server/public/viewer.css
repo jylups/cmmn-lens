@@ -22,6 +22,8 @@ body {
 }
 
 .file {
+  flex: none;
+  max-width: 50%;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -29,7 +31,11 @@ body {
 }
 
 .status {
+  min-width: 0;
   color: #4b5563;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status[data-kind="warning"] {
@@ -44,4 +50,30 @@ body {
   flex: 1;
   min-height: 0;
   position: relative;
+}
+
+.problems {
+  border-bottom: 1px solid #e5e7eb;
+  background: #fffbeb;
+  padding: 4px 12px;
+  max-height: 30vh;
+  overflow: auto;
+}
+
+.problems summary {
+  cursor: pointer;
+  color: #92400e;
+}
+
+.problems ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.problems li {
+  white-space: pre-wrap;
+}
+
+.problems li[data-kind="error"] {
+  color: #b91c1c;
 }
