@@ -1,11 +1,12 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { copyFile, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { copyFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { describeSelection } from '../src/selection.js';
 import { ViewServer } from '../src/views.js';
+import { eventsUrl, openEvents } from './helpers/events.js';
 
 const FIXTURES = join(import.meta.dirname, 'fixtures');
 const CLAIM_PATH = join(FIXTURES, 'claim.cmmn');
@@ -146,5 +147,75 @@ describe('posting the selection', () => {
 
     assert.equal(await empty.selection(), null);
     assert.equal(await views.selection(CLAIM_PATH), null);
+  });
+});
+
+describe('the properties panel', () => {
+  let folder;
+  let views;
+  let view;
+
+  before(async () => {
+    folder = await mkdtemp(join(tmpdir(), 'cmmn-lens-'));
+    await copyFile(CLAIM_PATH, join(folder, 'claim.cmmn'));
+    views = new ViewServer({ baseDir: folder });
+    view = await views.open('claim.cmmn');
+  });
+
+  after(async () => {
+    await views.close();
+    await rm(folder, { recursive: true });
+  });
+
+  function describeUrl(ids, token = views.token) {
+    const url = new URL(view.url);
+
+    url.pathname += '/describe';
+    url.searchParams.set('t', token);
+    url.searchParams.set('ids', ids);
+
+    return url;
+  }
+
+  test('the page has the panel and loads its script', async () => {
+    const html = await (await fetch(view.url)).text();
+
+    assert.match(html, /<aside class="properties" id="properties"/);
+    assert.match(html, /<script src="\/assets\/properties\.js"><\/script>\s*<script src="\/assets\/viewer\.js">/);
+    assert.equal((await fetch(new URL('/assets/properties.js', view.url))).status, 200);
+  });
+
+  test('describes the elements the page asks about', async () => {
+    const response = await fetch(describeUrl('PI_approve,PI_gone'));
+    const { elements } = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(elements[0].definition.name, 'Approve the claim');
+    assert.deepEqual(elements[1], { id: 'PI_gone', isMissing: true });
+    assert.equal((await fetch(describeUrl('PI_approve', '0'.repeat(48)))).status, 403);
+  });
+
+  test('says when the file cannot be read as CMMN', async () => {
+    await writeFile(join(folder, 'claim.cmmn'), CLAIM.slice(0, 400));
+
+    const body = await (await fetch(describeUrl('PI_approve'))).json();
+
+    assert.match(body.error, /unparsable|unclosed|unexpected/i);
+    await writeFile(join(folder, 'claim.cmmn'), CLAIM);
+  });
+
+  test('a page that connects gets the selection the server holds', async () => {
+    const target = new URL(view.url);
+
+    target.pathname += '/selection';
+    await fetch(target, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{"ids":["PI_review"]}' });
+
+    const events = await openEvents(eventsUrl(view.url));
+
+    try {
+      assert.deepEqual(await events.next('selection'), { ids: ['PI_review'] });
+    } finally {
+      events.close();
+    }
   });
 });

@@ -8,10 +8,11 @@
  * @param {string} options.diagramUrl where the page fetches the file's XML
  * @param {string} options.eventsUrl the stream that says when the file changes
  * @param {string} options.selectionUrl where the page posts the user's selection
+ * @param {string} options.describeUrl where the page gets the selected elements' properties
  * @returns {string}
  */
-export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl }) {
-  const config = jsonForScript({ name, diagramUrl, eventsUrl, selectionUrl, flowableUrl: '/assets/flowable.json' });
+export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, describeUrl }) {
+  const config = jsonForScript({ name, diagramUrl, eventsUrl, selectionUrl, describeUrl, flowableUrl: '/assets/flowable.json' });
 
   return `<!doctype html>
 <html lang="en">
@@ -34,9 +35,21 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl }) 
     <summary id="problems-summary"></summary>
     <ul id="problems-list"></ul>
   </details>
-  <main class="canvas" id="canvas"></main>
+  <div class="workspace">
+    <main class="canvas" id="canvas"></main>
+    <aside class="properties" id="properties" aria-label="Properties of the selection">
+      <div class="properties-head">
+        <h2 id="properties-title">Properties</h2>
+        <button type="button" class="properties-toggle" id="properties-toggle" aria-expanded="true" aria-controls="properties-body">Hide</button>
+      </div>
+      <div class="properties-body" id="properties-body">
+        <p class="properties-empty">Select an element to see its properties.</p>
+      </div>
+    </aside>
+  </div>
   <script id="cmmn-lens-config" type="application/json">${config}</script>
   <script src="/assets/cmmn-navigated-viewer.js"></script>
+  <script src="/assets/properties.js"></script>
   <script src="/assets/viewer.js"></script>
 </body>
 </html>
