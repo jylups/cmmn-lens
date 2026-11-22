@@ -9,6 +9,8 @@ A Claude Code plugin that shows the local Flowable CMMN file Claude is editing i
 - A local MCP server, started by Claude Code when the plugin is enabled.
 - A web page served by that server on `localhost` only, with a random port and token. In the Claude desktop app the page opens in the built-in browser pane; in the terminal and VS Code it opens in your browser.
 - It reads the `.cmmn` file you open in the viewer, and writes it only when you save from the viewer.
+- While the server runs, it keeps a small file (its port, token and project folder) in a `cmmn-lens` folder under the system's temporary folder, readable only by you, so the plugin's prompt hook can find it.
+- Before each prompt, a hook (Node) asks the running server for your selection in the viewer and adds it to the prompt's context. It can be turned off with the plugin's option.
 - It sends nothing to other servers and collects no usage data.
 
 ## Install
@@ -27,6 +29,8 @@ While the repository is private, only people with access to it can install the p
 
 The plugin's `cmmn-viewer` skill tells Claude to open the viewer when it works on a local `.cmmn` file, before it changes anything, and to validate the file after each edit. In the Claude desktop app the view opens in the built-in browser pane, beside the chat; elsewhere Claude gives you its URL.
 
+When you select elements in the view, the plugin adds them to each prompt's context, so you can say "rename this" or "what does this do?" without naming the element. To turn that off, set the plugin's **Add the viewer selection to prompts** option to off (`/config`, or the plugin's settings in the desktop app).
+
 To make sure Claude uses it in a project that keeps CMMN models, add this to the project's `CLAUDE.md`, with your own folder:
 
 ```markdown
@@ -41,7 +45,7 @@ open it in the viewer before you change it, and validate it after each edit.
 | Path | What it is |
 |---|---|
 | `.claude-plugin/marketplace.json` | The marketplace that lists the plugin |
-| `plugins/cmmn-lens/` | The plugin folder that Claude Code installs |
+| `plugins/cmmn-lens/` | The plugin folder that Claude Code installs: the `cmmn-viewer` skill and the prompt hook |
 | `server/` | The MCP server and the viewer page (`@jylups/cmmn-lens-server`, not published yet) |
 | `tests/` | Checks of the manifests |
 
@@ -71,6 +75,8 @@ claude plugin validate --strict plugins/cmmn-lens
 The page follows the file: the server watches the file's folder and tells the page, over server-sent events, when the content changes, so edits, shell writes and editors' saves all show within a second. The page keeps the zoom and scroll position, lists import errors and warnings under its bar, and keeps the last version that opened when a new one doesn't, or when the file is deleted.
 
 `validate`: given the path of a `.cmmn` file, it parses it the way the viewer does, with the CMMN and Flowable descriptors, and lists the problems with their element ids and lines. Errors are XML that doesn't parse, duplicate ids and references to elements that don't exist. Warnings are attributes nothing reads and elements with no shape in the diagram, which the viewer can't show.
+
+While it runs, the server lists itself (port, token, project folder) in a registry folder under the system's temporary folder, readable only by you, and removes the entry when it stops. The plugin's `UserPromptSubmit` hook (`plugins/cmmn-lens/hooks/selection-context.mjs`) reads the servers of the session's project, asks each for its selection (`GET /selection`, with the token), and adds the newest to the prompt's context.
 
 `get_selection`: the page posts the user's selection to the server as it changes, and keeps it across updates of the file. The tool describes the selected elements from the file as it is now: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. Without a path it reads the viewer whose selection changed last.
 

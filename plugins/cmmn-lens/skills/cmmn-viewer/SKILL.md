@@ -27,7 +27,7 @@ For a new file, write it first (with a diagram, see below), then open the view.
 
 ## When the user points at the diagram
 
-When the user refers to part of the model without naming it ("this task", "the selected one", "what I clicked", "what does this do?"), call `get_selection` and answer about the elements it returns. Use their ids when you edit them. If nothing is selected, ask the user to click the element in the view. The selection stays across updates of the file, so after an edit it still names the same elements.
+When the user refers to part of the model without naming it ("this task", "the selected one", "what I clicked", "what does this do?"), use what they have selected in the view. The plugin usually adds it to the prompt's context ("The user has selected in the cmmn-lens viewer of …"); when that is missing, or you need it again later in the turn, call `get_selection`. Answer about the elements it names. Use their ids when you edit them. If nothing is selected, ask the user to click the element in the view. The selection stays across updates of the file, so after an edit it still names the same elements.
 
 ## After each edit
 

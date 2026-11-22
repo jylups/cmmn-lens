@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 import { FileFollower, versionOf } from './follow.js';
 import { resolveCmmnFile } from './paths.js';
+import { register, unregister } from './registry.js';
+import { describeSelection } from './selection.js';
 import { renderPage } from './page.js';
 
 const require = createRequire(import.meta.url);
@@ -53,16 +55,26 @@ const KEEPALIVE_MS = 25_000;
  * and one each time the file's content changes or it disappears or comes back.
  *
  * The page posts the user's selection to `/view/<id>/selection` as JSON
- * (`{ ids }`); `selection()` returns the newest.
+ * (`{ ids }`); `selection()` returns the newest, and `GET /selection`
+ * describes it for the plugin's hooks, which find the server through the
+ * registry (registry.js) when `isRegistered` is set.
  */
 export class ViewServer {
   /**
    * @param {object} [options]
    * @param {string} [options.baseDir] the folder relative paths are resolved
    *   against; the working directory by default
+   * @param {boolean} [options.isRegistered] whether to list the running web
+   *   server in the registry, for the plugin's hooks
+   * @param {string} [options.registryDir] the registry folder, for tests
+   * @param {string} [options.projectDir] the project, recorded in the
+   *   registry; `baseDir` by default
    */
-  constructor({ baseDir = process.cwd() } = {}) {
+  constructor({ baseDir = process.cwd(), isRegistered = false, registryDir, projectDir = baseDir } = {}) {
     this.baseDir = baseDir;
+    this.isRegistered = isRegistered;
+    this.registryDir = registryDir;
+    this.projectDir = projectDir;
     this.token = randomBytes(24).toString('hex');
     this.viewsByPath = new Map();
     this.viewsById = new Map();
@@ -107,7 +119,8 @@ export class ViewServer {
    * selection changed last.
    *
    * @param {string} [path] absolute, or relative to `baseDir`
-   * @returns {Promise<{ path: string, name: string, ids: string[] } | null>}
+   * @returns {Promise<{ path: string, name: string, ids: string[], at: number } | null>}
+   *   `at` is when the selection last changed (0: never)
    *   null when no view is open (for that file)
    */
   async selection(path) {
@@ -123,7 +136,29 @@ export class ViewServer {
       }
     }
 
-    return view ? { path: view.path, name: view.name, ids: view.selection.ids } : null;
+    return view ? { path: view.path, name: view.name, ids: view.selection.ids, at: view.selection.at } : null;
+  }
+
+  /**
+   * The selection, with each selected element described from the file as it
+   * is now (selection.js).
+   *
+   * @param {string} [path]
+   * @returns {Promise<null | { path: string, name: string, ids: string[], elements?: object[], error?: string }>}
+   *   `error` when the file can't be read as CMMN right now
+   */
+  async selectionDetails(path) {
+    const selection = await this.selection(path);
+
+    if (!selection?.ids.length) {
+      return selection;
+    }
+
+    try {
+      return { ...selection, elements: await describeSelection(await readFile(selection.path, 'utf8'), selection.ids) };
+    } catch (error) {
+      return { ...selection, error: error.message.split('\n')[0] };
+    }
   }
 
   viewUrl(view) {
@@ -167,6 +202,15 @@ export class ViewServer {
       }
     }, KEEPALIVE_MS);
     this.keepalive.unref();
+
+    if (this.isRegistered) {
+      await register({
+        pid: process.pid,
+        port: this.port,
+        token: this.token,
+        projectDir: this.projectDir
+      }, this.registryDir);
+    }
   }
 
   /** Sends a view's file state to every page that shows it. */
@@ -200,6 +244,10 @@ export class ViewServer {
       return;
     }
 
+    if (this.isRegistered) {
+      await unregister(process.pid, this.registryDir);
+    }
+
     server.closeAllConnections();
 
     await new Promise(resolveClose => server.close(() => resolveClose()));
@@ -213,6 +261,22 @@ export class ViewServer {
     }
 
     const url = new URL(request.url, this.origin());
+
+    if (url.pathname === '/selection') {
+      if (request.method !== 'GET') {
+        return send(response, 405, 'Method not allowed', { Allow: 'GET' });
+      }
+
+      if (!this.isToken(url.searchParams.get('t'))) {
+        return send(response, 403, 'Forbidden');
+      }
+
+      return send(response, 200, JSON.stringify(await this.selectionDetails()), {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Cache-Control': 'no-store'
+      });
+    }
+
     const match = VIEW_PATH.exec(url.pathname);
     const isSelection = match?.[2] === 'selection';
     const allowed = isSelection ? ['POST'] : ['GET', 'HEAD'];

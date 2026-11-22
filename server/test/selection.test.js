@@ -106,7 +106,7 @@ describe('posting the selection', () => {
   }
 
   test('starts with nothing selected', async () => {
-    assert.deepEqual(await views.selection(), { path: view.path, name: 'claim.cmmn', ids: [] });
+    assert.deepEqual(await views.selection(), { path: view.path, name: 'claim.cmmn', ids: [], at: 0 });
   });
 
   test('stores the ids a page posts, once each', async () => {
@@ -134,7 +134,11 @@ describe('posting the selection', () => {
     assert.equal((await views.selection()).name, 'other.cmmn');
 
     await post(selectionUrl(view.url), JSON.stringify({ ids: [] }));
-    assert.deepEqual(await views.selection(), { path: view.path, name: 'claim.cmmn', ids: [] });
+    const latest = await views.selection();
+
+    assert.equal(latest.name, 'claim.cmmn');
+    assert.deepEqual(latest.ids, []);
+    assert.ok(latest.at > 0);
   });
 
   test('answers null for a file with no view', async () => {

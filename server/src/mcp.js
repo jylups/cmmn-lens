@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { relative } from 'node:path';
 
@@ -6,7 +5,6 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { CMMN_EXTENSIONS, resolveCmmnFile } from './paths.js';
-import { describeSelection } from './selection.js';
 import { validateFile } from './validate.js';
 
 const { version } = createRequire(import.meta.url)('../package.json');
@@ -125,46 +123,12 @@ export function createMcpServer(views) {
     let selection;
 
     try {
-      selection = await views.selection(path);
+      selection = await views.selectionDetails(path);
     } catch (error) {
       return { content: [{ type: 'text', text: error.message }], isError: true };
     }
 
-    if (!selection) {
-      return { content: [{ type: 'text', text: path ? `No viewer is open for ${path}.` : 'No viewer is open. Open one with open_view.' }] };
-    }
-
-    const shown = relative(views.baseDir, selection.path) || selection.path;
-
-    if (!selection.ids.length) {
-      return { content: [{ type: 'text', text: `Nothing is selected in the viewer of ${shown}.` }] };
-    }
-
-    let elements;
-
-    try {
-      elements = await describeSelection(await readFile(selection.path, 'utf8'), selection.ids);
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text',
-          text: `${shown} can't be read as CMMN right now (${error.message.split('\n')[0]}). The selected ids are: ${selection.ids.join(', ')}.`
-        }]
-      };
-    }
-
-    const summary = elements.map(element => {
-      const name = element.name ?? element.definition?.name;
-
-      return name ? `${element.id} ("${name}")` : element.id;
-    }).join(', ');
-
-    return {
-      content: [{
-        type: 'text',
-        text: `Selected in ${shown}: ${summary}\n${JSON.stringify(elements, null, 2)}`
-      }]
-    };
+    return { content: [{ type: 'text', text: formatSelection(selection, views.baseDir, path) }] };
   });
 
   return server;
@@ -191,4 +155,36 @@ export function formatValidation(name, { errorCount, warningCount, problems }) {
   });
 
   return `${name}: ${counts}\n${lines.join('\n')}`;
+}
+
+/**
+ * A selection (ViewServer.selectionDetails) as text: a summary line, then the
+ * details as JSON.
+ *
+ * @param {object|null} selection
+ * @param {string} baseDir
+ * @param {string} [path] the file asked about, if any
+ */
+export function formatSelection(selection, baseDir, path) {
+  if (!selection) {
+    return path ? `No viewer is open for ${path}.` : 'No viewer is open. Open one with open_view.';
+  }
+
+  const shown = relative(baseDir, selection.path) || selection.path;
+
+  if (!selection.ids.length) {
+    return `Nothing is selected in the viewer of ${shown}.`;
+  }
+
+  if (selection.error) {
+    return `${shown} can't be read as CMMN right now (${selection.error}). The selected ids are: ${selection.ids.join(', ')}.`;
+  }
+
+  const summary = selection.elements.map(element => {
+    const name = element.name ?? element.definition?.name;
+
+    return name ? `${element.id} ("${name}")` : element.id;
+  }).join(', ');
+
+  return `Selected in ${shown}: ${summary}\n${JSON.stringify(selection.elements, null, 2)}`;
 }
