@@ -35,3 +35,20 @@ for (const entry of marketplace.plugins) {
     assert.ok(existsSync(join(root, entry.source, 'LICENSE')));
   });
 }
+
+test('the plugin, the server package and the plugin\'s pinned server have the same version', () => {
+  const plugin = readJson('plugins/cmmn-lens/.claude-plugin/plugin.json');
+  const server = readJson('server/package.json');
+  const mcp = readJson('plugins/cmmn-lens/.mcp.json');
+  const pinned = mcp.mcpServers['cmmn-lens'].args.find(arg => arg.startsWith(`${server.name}@`));
+
+  assert.equal(server.version, plugin.version);
+  assert.equal(pinned, `${server.name}@${server.version}`);
+});
+
+test('the changelog has an entry for the current version', () => {
+  const { version } = readJson('server/package.json');
+  const changelog = readFileSync(join(root, 'CHANGELOG.md'), 'utf8');
+
+  assert.match(changelog, new RegExp(`^## ${version.replaceAll('.', '\\.')}( |$)`, 'm'));
+});
