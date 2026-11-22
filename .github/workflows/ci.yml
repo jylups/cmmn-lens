@@ -20,6 +20,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - name: Check that the third-party notices match the build
+        run: git diff --exit-code server/THIRD_PARTY_NOTICES.md
       - run: npm test
       - name: Validate the marketplace and the plugin
         run: |
