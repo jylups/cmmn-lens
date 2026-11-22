@@ -27,6 +27,7 @@ const ASSETS = new Map([
   ['/assets/cmmn-embedded.css', join(CMMN_JS_DIST, 'assets/cmmn-font/css/cmmn-embedded.css')],
   ['/assets/cmmn-js-flowable.css', join(CMMN_JS_DIST, 'assets/cmmn-js-flowable.css')],
   ['/assets/flowable.json', require.resolve('flowable-cmmn-moddle/resources/flowable.json')],
+  ['/assets/properties.js', join(PUBLIC_DIR, 'properties.js')],
   ['/assets/viewer.js', join(PUBLIC_DIR, 'viewer.js')],
   ['/assets/viewer.css', join(PUBLIC_DIR, 'viewer.css')]
 ]);
@@ -37,7 +38,7 @@ const CONTENT_TYPES = {
   '.json': 'application/json; charset=utf-8'
 };
 
-const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events|selection))?$/;
+const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events|selection|describe))?$/;
 
 /** The largest selection a page may post. */
 const MAX_SELECTION_BYTES = 64 * 1024;
@@ -374,6 +375,10 @@ export class ViewServer {
       return this.receiveSelection(request, response, view);
     }
 
+    if (match[2] === 'describe') {
+      return this.describe(response, view, url.searchParams.get('ids'));
+    }
+
     if (match[2] === 'events') {
       return this.stream(request, response, view);
     }
@@ -399,7 +404,8 @@ export class ViewServer {
       path: view.path,
       diagramUrl: `/view/${view.id}/diagram?t=${this.token}`,
       eventsUrl: `/view/${view.id}/events?t=${this.token}`,
-      selectionUrl: `/view/${view.id}/selection?t=${this.token}`
+      selectionUrl: `/view/${view.id}/selection?t=${this.token}`,
+      describeUrl: `/view/${view.id}/describe?t=${this.token}`
     });
 
     return send(response, 200, page, {
@@ -445,6 +451,27 @@ export class ViewServer {
     return send(response, 204, '');
   }
 
+  /**
+   * Describes elements of a view's file for the page's properties panel:
+   * `?ids=a,b` (ids are XML names, which have no commas). Answers
+   * `{ elements }`, or `{ error }` when the file can't be read as CMMN.
+   */
+  async describe(response, view, idsParam) {
+    const ids = (idsParam ?? '').split(',').filter(Boolean).slice(0, 100);
+    let body;
+
+    try {
+      body = { elements: await describeSelection(await readFile(view.path, 'utf8'), ids) };
+    } catch (error) {
+      body = { error: error.message.split('\n')[0] };
+    }
+
+    return send(response, 200, JSON.stringify(body), {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store'
+    });
+  }
+
   /** Opens a page's event stream and sends the file's current state. */
   stream(request, response, view) {
     response.writeHead(200, {
@@ -459,6 +486,9 @@ export class ViewServer {
 
     response.write('retry: 2000\n\n');
     sendEvent(response, 'state', view.follower.state);
+
+    // a page that loads again restores the selection the server holds
+    sendEvent(response, 'selection', { ids: view.selection.ids });
 
     if (view.highlight) {
       sendEvent(response, 'highlight', view.highlight);

@@ -9,6 +9,12 @@
   var problemsEl = document.getElementById('problems');
   var problemsSummaryEl = document.getElementById('problems-summary');
   var problemsListEl = document.getElementById('problems-list');
+  var propertiesEl = document.getElementById('properties');
+  var propertiesToggleEl = document.getElementById('properties-toggle');
+  var properties = window.cmmnLensProperties(
+    document.getElementById('properties-body'),
+    document.getElementById('properties-title')
+  );
 
   var viewer = null;
 
@@ -32,6 +38,10 @@
   var HIGHLIGHT_MARKER = 'cmmn-lens-highlight';
   var pendingHighlight = null;
   var shownHighlight = null;
+
+  // the properties panel's request in flight, so an older answer can't
+  // replace a newer one
+  var propertiesRequest = 0;
 
   function setStatus(text, kind) {
     statusEl.textContent = text;
@@ -167,6 +177,46 @@
     return a.length === b.length && a.every(function(id, index) { return id === b[index]; });
   }
 
+  /** Shows the selected elements' properties, as the file has them now. */
+  function refreshProperties() {
+    var request = ++propertiesRequest;
+
+    if (!selectedIds.length) {
+      properties.show(null);
+
+      return;
+    }
+
+    fetch(config.describeUrl + '&ids=' + encodeURIComponent(selectedIds.join(',')), { cache: 'no-store' })
+      .then(function(response) { return response.json(); })
+      .then(function(result) {
+        if (request === propertiesRequest) {
+          properties.show(result);
+        }
+      })
+      .catch(function(error) {
+        if (request === propertiesRequest) {
+          properties.show({ error: error.message });
+        }
+      });
+  }
+
+  function setPropertiesOpen(isOpen) {
+    propertiesEl.classList.toggle('is-collapsed', !isOpen);
+    propertiesToggleEl.textContent = isOpen ? 'Hide' : 'Show';
+    propertiesToggleEl.setAttribute('aria-expanded', String(isOpen));
+
+    try {
+      localStorage.setItem('cmmn-lens-properties', isOpen ? 'open' : 'closed');
+    } catch {
+      // storage blocked: the choice lasts for this page only
+    }
+
+    if (viewer) {
+      viewer.get('canvas').resized();
+    }
+  }
+
   /** Tells the server what is selected, once the selection has settled. */
   function postSelection() {
     clearTimeout(postTimer);
@@ -192,6 +242,7 @@
     if (!sameIds(ids, selectedIds)) {
       selectedIds = ids;
       postSelection();
+      refreshProperties();
     }
   }
 
@@ -245,6 +296,7 @@
         lastGood = xml;
         restoreViewbox(box);
         syncHighlight();
+        refreshProperties();
 
         var count = result.warnings.length;
         var opened = isFirst ? 'Opened' : 'Updated ' + time();
@@ -429,6 +481,25 @@
     var events = new EventSource(config.eventsUrl);
     var failedRetries = 0;
 
+    // the selection the server holds, sent on connect: a page that loads
+    // again shows it, rather than leaving the server with a selection the
+    // user can't see
+    var hasSelectionFromServer = false;
+
+    events.addEventListener('selection', function(event) {
+      if (hasSelectionFromServer) {
+        return;
+      }
+
+      hasSelectionFromServer = true;
+      selectedIds = JSON.parse(event.data).ids || [];
+
+      if (lastGood) {
+        restoreSelection();
+        refreshProperties();
+      }
+    });
+
     events.addEventListener('highlight', function(event) {
       pendingHighlight = JSON.parse(event.data);
       syncHighlight();
@@ -478,6 +549,18 @@
     });
 
     viewer.on('selection.changed', onSelectionChanged);
+
+    propertiesToggleEl.addEventListener('click', function() {
+      setPropertiesOpen(propertiesEl.classList.contains('is-collapsed'));
+    });
+
+    try {
+      if (localStorage.getItem('cmmn-lens-properties') === 'closed') {
+        setPropertiesOpen(false);
+      }
+    } catch {
+      // storage blocked: the panel starts open
+    }
 
     follow();
   }).catch(function(error) {
