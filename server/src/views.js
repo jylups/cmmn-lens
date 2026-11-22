@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
+import { chmod, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,10 @@ const ASSETS = new Map([
   ['/assets/flowable.json', require.resolve('flowable-cmmn-moddle/resources/flowable.json')],
   ['/assets/properties.js', join(PUBLIC_DIR, 'properties.js')],
   ['/assets/viewer.js', join(PUBLIC_DIR, 'viewer.js')],
-  ['/assets/viewer.css', join(PUBLIC_DIR, 'viewer.css')]
+  ['/assets/viewer.css', join(PUBLIC_DIR, 'viewer.css')],
+  // built by `npm run build` (scripts/build.mjs); loaded in edit mode
+  ['/assets/build/editor.js', join(PUBLIC_DIR, 'build', 'editor.js')],
+  ['/assets/build/properties-panel.css', join(PUBLIC_DIR, 'build', 'properties-panel.css')]
 ]);
 
 const CONTENT_TYPES = {
@@ -38,7 +41,10 @@ const CONTENT_TYPES = {
   '.json': 'application/json; charset=utf-8'
 };
 
-const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events|selection|describe))?$/;
+const VIEW_PATH = /^\/view\/([0-9a-f]+)(?:\/(diagram|events|selection|describe|save))?$/;
+
+/** The largest model the page may save. */
+const MAX_SAVE_BYTES = 10 * 1024 * 1024;
 
 /** The largest selection a page may post. */
 const MAX_SELECTION_BYTES = 64 * 1024;
@@ -344,7 +350,8 @@ export class ViewServer {
 
     const match = VIEW_PATH.exec(url.pathname);
     const isSelection = match?.[2] === 'selection';
-    const allowed = isSelection ? ['POST'] : ['GET', 'HEAD'];
+    const isSave = match?.[2] === 'save';
+    const allowed = isSelection || isSave ? ['POST'] : ['GET', 'HEAD'];
 
     if (!allowed.includes(request.method)) {
       return send(response, 405, 'Method not allowed', { Allow: allowed.join(', ') });
@@ -353,7 +360,13 @@ export class ViewServer {
     const asset = ASSETS.get(url.pathname);
 
     if (asset) {
-      const body = await readFile(asset);
+      let body;
+
+      try {
+        body = await readFile(asset);
+      } catch {
+        return send(response, 404, `${url.pathname} isn't built: run npm run build`);
+      }
 
       return send(response, 200, body, {
         'Content-Type': CONTENT_TYPES[extname(asset)],
@@ -373,6 +386,10 @@ export class ViewServer {
 
     if (isSelection) {
       return this.receiveSelection(request, response, view);
+    }
+
+    if (isSave) {
+      return this.save(request, response, view);
     }
 
     if (match[2] === 'describe') {
@@ -405,7 +422,8 @@ export class ViewServer {
       diagramUrl: `/view/${view.id}/diagram?t=${this.token}`,
       eventsUrl: `/view/${view.id}/events?t=${this.token}`,
       selectionUrl: `/view/${view.id}/selection?t=${this.token}`,
-      describeUrl: `/view/${view.id}/describe?t=${this.token}`
+      describeUrl: `/view/${view.id}/describe?t=${this.token}`,
+      saveUrl: `/view/${view.id}/save?t=${this.token}`
     });
 
     return send(response, 200, page, {
@@ -414,32 +432,50 @@ export class ViewServer {
     });
   }
 
-  /** Stores the selection a page posts: `{ ids: string[] }`. */
-  async receiveSelection(request, response, view) {
-    if (!/^application\/json\b/.test(request.headers['content-type'] ?? '')) {
-      return send(response, 415, 'Send the selection as application/json');
+  /**
+   * Writes the model the page saves (`{ xml }`) to the view's file, and
+   * answers `{ version }`, the saved content's version. The file is replaced
+   * in one step (a new file renamed over it), keeping its permissions.
+   */
+  async save(request, response, view) {
+    const body = await readJson(request, response, MAX_SAVE_BYTES);
+
+    if (body === undefined) {
+      return;
     }
 
-    const chunks = [];
-    let size = 0;
-
-    for await (const chunk of request) {
-      size += chunk.length;
-
-      if (size > MAX_SELECTION_BYTES) {
-        return send(response, 413, 'Selection too large');
-      }
-
-      chunks.push(chunk);
+    if (typeof body?.xml !== 'string' || !body.xml.trim()) {
+      return send(response, 400, 'The save needs xml, the model as a string');
     }
 
-    let ids;
+    const temporary = `${view.path}.cmmn-lens-${randomBytes(4).toString('hex')}.tmp`;
 
     try {
-      ({ ids } = JSON.parse(Buffer.concat(chunks).toString('utf8')));
-    } catch {
-      return send(response, 400, 'The selection is not JSON');
+      const { mode } = await stat(view.path).catch(() => ({ mode: 0o644 }));
+
+      await writeFile(temporary, body.xml, 'utf8');
+      await chmod(temporary, mode & 0o7777);
+      await rename(temporary, view.path);
+    } catch (error) {
+      await rm(temporary, { force: true });
+
+      return send(response, 500, `Couldn't save ${view.name}: ${error.message}`);
     }
+
+    return send(response, 200, JSON.stringify({ version: versionOf(body.xml) }), {
+      'Content-Type': 'application/json; charset=utf-8'
+    });
+  }
+
+  /** Stores the selection a page posts: `{ ids: string[] }`. */
+  async receiveSelection(request, response, view) {
+    const body = await readJson(request, response, MAX_SELECTION_BYTES);
+
+    if (body === undefined) {
+      return;
+    }
+
+    const ids = body?.ids;
 
     if (!Array.isArray(ids) || !ids.every(id => typeof id === 'string')) {
       return send(response, 400, 'The selection needs ids, a list of strings');
@@ -519,4 +555,39 @@ function send(response, status, body, headers = {}) {
 
 function sendEvent(response, event, data) {
   response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+}
+
+/**
+ * Reads a JSON request body of at most `limit` bytes. Answers the request
+ * itself (415, 413, 400) and resolves undefined when the body won't do.
+ */
+async function readJson(request, response, limit) {
+  if (!/^application\/json\b/.test(request.headers['content-type'] ?? '')) {
+    send(response, 415, 'Send application/json');
+
+    return undefined;
+  }
+
+  const chunks = [];
+  let size = 0;
+
+  for await (const chunk of request) {
+    size += chunk.length;
+
+    if (size > limit) {
+      send(response, 413, 'Too large');
+
+      return undefined;
+    }
+
+    chunks.push(chunk);
+  }
+
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    send(response, 400, 'Not JSON');
+
+    return undefined;
+  }
 }

@@ -16,7 +16,20 @@
     document.getElementById('properties-title')
   );
 
+  var propertiesBodyEl = document.getElementById('properties-body');
+  var propertiesEditorEl = document.getElementById('properties-editor');
+  var editButton = document.getElementById('edit');
+  var saveButton = document.getElementById('save');
+  var doneButton = document.getElementById('done');
+
+  // the diagram: a NavigatedViewer in view mode, a Modeler with the Flowable
+  // properties panel in edit mode (both answer the same calls used here)
   var viewer = null;
+  var flowableDescriptor = null;
+  var mode = 'view';
+  var isDirty = false;
+  var isSaving = false;
+  var editorLoading = null;
 
   // the version of the file the page shows, and the XML of the last version
   // that opened, which the page goes back to when a new version fails
@@ -181,6 +194,11 @@
   function refreshProperties() {
     var request = ++propertiesRequest;
 
+    // in edit mode the Flowable properties panel shows the selection
+    if (mode === 'edit') {
+      return;
+    }
+
     if (!selectedIds.length) {
       properties.show(null);
 
@@ -297,6 +315,7 @@
         restoreViewbox(box);
         syncHighlight();
         refreshProperties();
+        updateButtons();
 
         var count = result.warnings.length;
         var opened = isFirst ? 'Opened' : 'Updated ' + time();
@@ -452,7 +471,14 @@
       return;
     }
 
-    if (fileState.version === shownVersion) {
+    if (fileState.version === shownVersion || isSaving) {
+      return;
+    }
+
+    if (mode === 'edit' && isDirty) {
+      // the unsaved edits stay; what to do about the change is #12's
+      setStatus('The file changed on disk. Saving now replaces that change.', 'warning');
+
       return;
     }
 
@@ -532,6 +558,162 @@
     });
   }
 
+  function updateButtons() {
+    editButton.hidden = mode !== 'view' || !lastGood;
+    saveButton.hidden = mode !== 'edit';
+    doneButton.hidden = mode !== 'edit';
+    saveButton.disabled = !isDirty || isSaving;
+    document.body.classList.toggle('is-editing', mode === 'edit');
+    propertiesBodyEl.hidden = mode === 'edit';
+    propertiesEditorEl.hidden = mode !== 'edit';
+  }
+
+  function markDirty() {
+    if (isImporting) {
+      return;
+    }
+
+    isDirty = true;
+    setStatus('Unsaved changes', 'warning');
+    updateButtons();
+  }
+
+  /** Replaces the diagram instance with a viewer or a modeler. */
+  function createInstance(kind) {
+    if (viewer) {
+      viewer.destroy();
+    }
+
+    canvasEl.textContent = '';
+    propertiesEditorEl.textContent = '';
+
+    var options = {
+      container: canvasEl,
+      moddleExtensions: { flowable: flowableDescriptor }
+    };
+
+    if (kind === 'edit') {
+      options.keyboard = { bind: true };
+      options.additionalModules = window.CmmnLensEditor.modules;
+      options.propertiesPanel = { parent: propertiesEditorEl };
+      viewer = new window.CmmnLensEditor.Modeler(options);
+      viewer.on('commandStack.changed', markDirty);
+    } else {
+      viewer = new CmmnJS(options);
+    }
+
+    viewer.on('selection.changed', onSelectionChanged);
+  }
+
+  /** Loads the editor bundle and the panel's styles, once. */
+  function loadEditor() {
+    if (!editorLoading) {
+      editorLoading = new Promise(function(resolve, reject) {
+        var style = document.createElement('link');
+
+        style.rel = 'stylesheet';
+        style.href = config.editorStyleUrl;
+        document.head.appendChild(style);
+
+        var script = document.createElement('script');
+
+        script.src = config.editorScriptUrl;
+        script.onload = function() { resolve(); };
+        script.onerror = function() {
+          editorLoading = null;
+          reject(new Error('the editor isn\'t built (npm run build)'));
+        };
+        document.head.appendChild(script);
+      });
+    }
+
+    return editorLoading;
+  }
+
+  /** Switches to a viewer or a modeler showing the last version that opened. */
+  function switchTo(kind) {
+    var box = currentViewbox();
+
+    createInstance(kind);
+    mode = kind;
+    isDirty = false;
+    updateButtons();
+
+    return importXML(lastGood).then(function() {
+      restoreViewbox(box);
+      syncHighlight();
+      refreshProperties();
+    });
+  }
+
+  function enterEdit() {
+    if (!lastGood) {
+      return;
+    }
+
+    setStatus('Opening the editor…');
+
+    loadEditor().then(function() {
+      return switchTo('edit');
+    }).then(function() {
+      setStatus('Editing. Save writes the file.');
+    }).catch(function(error) {
+      setStatus('Couldn\'t open the editor: ' + error.message, 'error');
+    });
+  }
+
+  function leaveEdit() {
+    if (isDirty && !window.confirm('Discard the unsaved changes?')) {
+      return;
+    }
+
+    switchTo('view').then(function() {
+      setStatus('Opened');
+
+      // the file may have changed while the editor was open
+      sync();
+    });
+  }
+
+  function save() {
+    if (!isDirty || isSaving) {
+      return;
+    }
+
+    isSaving = true;
+    updateButtons();
+    setStatus('Saving…');
+
+    viewer.saveXML({ format: true }, function(error, xml) {
+      if (error) {
+        isSaving = false;
+        updateButtons();
+        setStatus('Couldn\'t export the model: ' + error.message, 'error');
+
+        return;
+      }
+
+      fetch(config.saveUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ xml: xml })
+      }).then(function(response) {
+        return response.ok ? response.json() : response.text().then(function(text) { throw new Error(text); });
+      }).then(function(result) {
+        lastGood = xml;
+        shownVersion = result.version;
+        isDirty = false;
+        setStatus('Saved ' + time());
+      }).catch(function(saveError) {
+        setStatus('Couldn\'t save: ' + saveError.message, 'error');
+      }).then(function() {
+        isSaving = false;
+        updateButtons();
+        sync();
+      });
+    });
+  }
+
   fetch(config.flowableUrl).then(function(response) {
     if (!response.ok) {
       throw new Error(response.statusText);
@@ -539,16 +721,29 @@
 
     return response.json();
   }).then(function(descriptor) {
-    viewer = new CmmnJS({
-      container: canvasEl,
-      moddleExtensions: { flowable: descriptor }
-    });
+    flowableDescriptor = descriptor;
+    createInstance('view');
 
     window.addEventListener('resize', function() {
       viewer.get('canvas').resized();
     });
 
-    viewer.on('selection.changed', onSelectionChanged);
+    window.addEventListener('beforeunload', function(event) {
+      if (isDirty) {
+        event.preventDefault();
+      }
+    });
+
+    editButton.addEventListener('click', enterEdit);
+    saveButton.addEventListener('click', save);
+    doneButton.addEventListener('click', leaveEdit);
+
+    document.addEventListener('keydown', function(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key === 's' && mode === 'edit') {
+        event.preventDefault();
+        save();
+      }
+    });
 
     propertiesToggleEl.addEventListener('click', function() {
       setPropertiesOpen(propertiesEl.classList.contains('is-collapsed'));
