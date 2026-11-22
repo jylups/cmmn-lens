@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-  { ignores: ['server/public/build/**', 'spikes/**'] },
+  { ignores: ['server/public/build/**', 'server/public/vendor/**', 'server/dist/**', 'spikes/**'] },
   js.configs.recommended,
   {
     languageOptions: {

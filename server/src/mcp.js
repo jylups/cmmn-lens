@@ -1,13 +1,13 @@
-import { createRequire } from 'node:module';
 import { relative } from 'node:path';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { CMMN_EXTENSIONS, resolveCmmnFile } from './paths.js';
+import serverPackage from '../package.json' with { type: 'json' };
 import { validateFile } from './validate.js';
 
-const { version } = createRequire(import.meta.url)('../package.json');
+const { version } = serverPackage;
 
 /**
  * The MCP server and its tools, backed by a ViewServer.
