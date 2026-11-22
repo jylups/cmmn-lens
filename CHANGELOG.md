@@ -4,7 +4,7 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
-## Unreleased
+## 0.1.2 (2026-11-22)
 
 - The server package has no runtime dependencies: the server and everything it serves are bundled at build time, so npx downloads one package and the first start takes a second or two, also when several sessions start at once (0.1.1's first start could pass the 30-second limit with several sessions)
 - The plugin README has a troubleshooting section
