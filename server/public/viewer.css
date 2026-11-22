@@ -1,0 +1,47 @@
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1f2937;
+  background: #fff;
+}
+
+.bar {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.file {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  color: #4b5563;
+}
+
+.status[data-kind="warning"] {
+  color: #92400e;
+}
+
+.status[data-kind="error"] {
+  color: #b91c1c;
+}
+
+.canvas {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}

@@ -9,5 +9,12 @@ export default [
       sourceType: 'module',
       globals: globals.node
     }
+  },
+  {
+    files: ['server/public/**/*.js'],
+    languageOptions: {
+      sourceType: 'script',
+      globals: globals.browser
+    }
   }
 ];
