@@ -1,10 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 
-import CmmnModdle from '@jylups/cmmn-moddle';
-
-const require = createRequire(import.meta.url);
-const flowable = require('flowable-cmmn-moddle/resources/flowable.json');
+import { locate, parseCmmn } from './moddle.js';
 
 /**
  * The elements the viewer draws only when the diagram (CMMNDI) has a shape
@@ -39,12 +35,11 @@ const DRAWN_TYPES = [
  * @returns {Promise<{ isValid: boolean, errorCount: number, warningCount: number, problems: Problem[] }>}
  */
 export async function validateXml(xml) {
-  const moddle = new CmmnModdle({ flowable });
   const problems = [];
   let result;
 
   try {
-    result = await moddle.fromXML(xml, 'cmmn:Definitions');
+    result = await parseCmmn(xml);
   } catch (error) {
     problems.push({ level: 'error', ...parseFailure(error.message) });
 
@@ -186,21 +181,4 @@ function describe(element) {
   const name = element.name ?? element.definitionRef?.name;
 
   return name ? `${type} ${element.id} ("${name}")` : `${type} ${element.id}`;
-}
-
-/** The line and column of the element with an id, from its `id` attribute. */
-function locate(xml, id) {
-  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = new RegExp(`\\sid\\s*=\\s*(["'])${escaped}\\1`).exec(xml);
-
-  if (!match) {
-    return {};
-  }
-
-  const before = xml.slice(0, match.index + 1);
-  const line = before.split('\n').length;
-  const tagStart = xml.lastIndexOf('<', match.index);
-  const lineStart = xml.lastIndexOf('\n', tagStart) + 1;
-
-  return { line, column: tagStart - lineStart + 1 };
 }

@@ -2,7 +2,7 @@
 
 A Claude Code plugin that shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
 
-**Status:** in development. The plugin has the `cmmn-viewer` skill, and `server/` has the viewer and its tools (`open_view`, `validate`), but the plugin doesn't start the server yet: that comes once the server is published to npm. Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
+**Status:** in development. The plugin has the `cmmn-viewer` skill, and `server/` has the viewer and its tools (`open_view`, `validate`, `get_selection`), but the plugin doesn't start the server yet: that comes once the server is published to npm. Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
 
 ## What it will run
 
@@ -64,13 +64,15 @@ claude plugin validate --strict plugins/cmmn-lens
 
 ### The viewer server
 
-`server/` is an MCP server (stdio) with two tools so far, `open_view` and `validate`.
+`server/` is an MCP server (stdio) with three tools so far: `open_view`, `validate` and `get_selection`.
 
 `open_view`: given the path of a `.cmmn` file, it starts a web server on `127.0.0.1` with a random port, and returns the URL of a page that shows the diagram with the cmmn-js viewer and the Flowable extensions. Calling it again for the same file returns the same URL. Every page and file request needs the server's random token, and the web server stops when the MCP server exits.
 
 The page follows the file: the server watches the file's folder and tells the page, over server-sent events, when the content changes, so edits, shell writes and editors' saves all show within a second. The page keeps the zoom and scroll position, lists import errors and warnings under its bar, and keeps the last version that opened when a new one doesn't, or when the file is deleted.
 
 `validate`: given the path of a `.cmmn` file, it parses it the way the viewer does, with the CMMN and Flowable descriptors, and lists the problems with their element ids and lines. Errors are XML that doesn't parse, duplicate ids and references to elements that don't exist. Warnings are attributes nothing reads and elements with no shape in the diagram, which the viewer can't show.
+
+`get_selection`: the page posts the user's selection to the server as it changes, and keeps it across updates of the file. The tool describes the selected elements from the file as it is now: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. Without a path it reads the viewer whose selection changed last.
 
 To try it, open a Claude Code session in this folder: `.mcp.json` registers the server as `cmmn-lens-dev` (approve it when asked), and `server/test/fixtures/claim.cmmn` is a small sample. The plugin itself starts the server from the published npm package once that exists.
 

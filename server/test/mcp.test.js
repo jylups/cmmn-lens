@@ -116,3 +116,41 @@ test('validate reports a path it cannot check as a tool error', async () => {
     await client.close();
   }
 });
+
+test('get_selection describes what the page posted', async () => {
+  const folder = await mkdtemp(join(tmpdir(), 'cmmn-lens-'));
+  const client = await connect(folder);
+
+  try {
+    await copyFile(join(FIXTURES, 'claim.cmmn'), join(folder, 'claim.cmmn'));
+
+    const none = await client.callTool({ name: 'get_selection', arguments: {} });
+
+    assert.equal(none.content[0].text, 'No viewer is open. Open one with open_view.');
+
+    const { structuredContent: view } = await client.callTool({ name: 'open_view', arguments: { path: 'claim.cmmn' } });
+    const empty = await client.callTool({ name: 'get_selection', arguments: {} });
+
+    assert.equal(empty.content[0].text, 'Nothing is selected in the viewer of claim.cmmn.');
+
+    const url = new URL(view.url);
+    url.pathname += '/selection';
+
+    const posted = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: ['PI_approve'] })
+    });
+
+    assert.equal(posted.status, 204);
+
+    const selected = await client.callTool({ name: 'get_selection', arguments: { path: 'claim.cmmn' } });
+    const [summary, ...json] = selected.content[0].text.split('\n');
+
+    assert.equal(summary, 'Selected in claim.cmmn: PI_approve ("Approve the claim")');
+    assert.equal(JSON.parse(json.join('\n'))[0].definition.attributes['flowable:candidateGroups'], 'managers');
+  } finally {
+    await client.close();
+    await rm(folder, { recursive: true });
+  }
+});
