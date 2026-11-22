@@ -2,7 +2,7 @@
 
 A Claude Code plugin that shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
 
-**Status:** in development. This version only sets up the plugin and its marketplace; it adds no viewer, tools, skills or hooks yet. See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
+**Status:** in development. The plugin has the `cmmn-viewer` skill, and `server/` has the viewer and its tools (`open_view`, `validate`), but the plugin doesn't start the server yet: that comes once the server is published to npm. Until then, try the tools in a session opened in this repository (see [The viewer server](#the-viewer-server)). See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for the plan.
 
 ## What it will run
 
@@ -22,6 +22,19 @@ In a Claude Code terminal session:
 Answer `y` to add the marketplace, then pick a scope. In the Claude desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `jylups/cmmn-lens`, then **Add plugin**.
 
 While the repository is private, only people with access to it can install the plugin.
+
+## Use it in a project
+
+The plugin's `cmmn-viewer` skill tells Claude to open the viewer when it works on a local `.cmmn` file, before it changes anything, and to validate the file after each edit. In the Claude desktop app the view opens in the built-in browser pane, beside the chat; elsewhere Claude gives you its URL.
+
+To make sure Claude uses it in a project that keeps CMMN models, add this to the project's `CLAUDE.md`, with your own folder:
+
+```markdown
+## CMMN models
+
+The case models are in `models/`. When you work on one, use the cmmn-viewer skill:
+open it in the viewer before you change it, and validate it after each edit.
+```
 
 ## Repository layout
 
