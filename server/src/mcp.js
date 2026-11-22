@@ -34,6 +34,8 @@ export function createMcpServer(views) {
       isReused: z.boolean().describe('Whether a view of this file was already open')
     },
     annotations: {
+      title: 'Open a CMMN viewer',
+      destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
     }
@@ -83,6 +85,8 @@ export function createMcpServer(views) {
       problems: z.array(problemSchema)
     },
     annotations: {
+      title: 'Validate a CMMN file',
+      destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
     }
@@ -116,6 +120,8 @@ export function createMcpServer(views) {
       path: z.string().min(1).optional().describe('The CMMN file whose viewer to read; the last one used if left out')
     },
     annotations: {
+      title: 'Get the selection in a CMMN viewer',
+      destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
     }
@@ -144,6 +150,8 @@ export function createMcpServer(views) {
       path: z.string().min(1).optional().describe('The CMMN file whose viewer to use; the last one used if left out')
     },
     annotations: {
+      title: 'Highlight elements in a CMMN viewer',
+      destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
     }
@@ -170,6 +178,8 @@ export function createMcpServer(views) {
       path: z.string().min(1).optional().describe('The CMMN file whose viewer to read; every viewer if left out')
     },
     annotations: {
+      title: 'Get the changes the user saved in a CMMN viewer',
+      destructiveHint: false,
       readOnlyHint: false,
       openWorldHint: false
     }

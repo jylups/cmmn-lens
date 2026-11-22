@@ -51,7 +51,7 @@ open it in the viewer before you change it, and validate it after each edit.
 | `server/` | The MCP server and the viewer page (`@jylups/cmmn-lens-server` on npm) |
 | `scripts/` | Release helpers: set the version, check a release tag, print a changelog entry |
 | `spikes/native-pane/` | A prototype pane mod, not shipped; see [docs/spikes/native-pane.md](docs/spikes/native-pane.md) |
-| `docs/` | Notes and spike write-ups |
+| `docs/` | Notes, spike write-ups, the icon's source and the [directory submission checklist](docs/directory-submission.md) |
 | `tests/` | Checks of the manifests |
 
 ## Development
