@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@jylups/cmmn-js": "0.24.1",
+    "@jylups/cmmn-moddle": "6.1.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "flowable-cmmn-moddle": "1.5.0",
     "zod": "^4.6.7"
