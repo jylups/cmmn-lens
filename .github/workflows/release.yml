@@ -31,8 +31,14 @@ jobs:
       - run: npm run lint
       - run: npm run build
       - run: npm test
-      - name: Publish the server package to npm
-        run: npm publish --workspace server
+      - name: Publish the server package to npm, unless the version is there already
+        run: |
+          name=$(node -p "require('./server/package.json').name")
+          if npm view "$name@${GITHUB_REF_NAME#v}" version > /dev/null 2>&1; then
+            echo "$name@${GITHUB_REF_NAME#v} is on npm already (published by hand); skipping"
+          else
+            npm publish --workspace server
+          fi
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}

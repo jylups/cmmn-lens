@@ -23,7 +23,8 @@ so no npm token is stored anywhere.
    ```
 
    then add the trusted publisher, and use the workflow from the next release
-   on.
+   on. The workflow skips the npm step for a version that is on npm already,
+   so pushing the tag still creates the GitHub release.
 
 Provenance (the npm badge linking a version to its source) needs a public
 repository, so it appears once this repository is public.
