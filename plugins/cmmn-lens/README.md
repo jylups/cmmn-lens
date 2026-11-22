@@ -45,6 +45,11 @@ In the Claude desktop app: **+** next to the prompt box, then **Plugins**, **Add
 
 Node 22 or later on the machine that runs Claude Code.
 
+## Troubleshooting
+
+- **The viewer's tools aren't available, and the session lists the cmmn-lens server as failed.** On its first start, npx downloads the server package, and a session waits 30 seconds for it. If the download took longer (a slow network, or several sessions starting at once right after you installed the plugin), start a new session: the package is cached by then and starts in about a second.
+- **"npx: command not found"**: Claude Code didn't find Node. Install Node 22 or later so that `npx` is on the PATH the app starts with.
+
 ## Support
 
 Report problems and ask questions in the [issues](https://github.com/jylups/cmmn-lens/issues). Report security problems privately through the repository's [security advisories](https://github.com/jylups/cmmn-lens/security/advisories/new).

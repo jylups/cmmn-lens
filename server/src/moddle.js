@@ -1,9 +1,5 @@
-import { createRequire } from 'node:module';
-
 import CmmnModdle from '@jylups/cmmn-moddle';
-
-const require = createRequire(import.meta.url);
-const flowable = require('flowable-cmmn-moddle/resources/flowable.json');
+import flowable from 'flowable-cmmn-moddle/resources/flowable.json' with { type: 'json' };
 
 /** A moddle that reads CMMN with the Flowable extensions, as the viewer does. */
 export function createModdle() {

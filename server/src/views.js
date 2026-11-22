@@ -2,7 +2,6 @@ import { realpathSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmod, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,21 +13,23 @@ import { register, unregister } from './registry.js';
 import { describeSelection } from './selection.js';
 import { renderPage } from './page.js';
 
-const require = createRequire(import.meta.url);
-
-const CMMN_JS_DIST = dirname(require.resolve('@jylups/cmmn-js/dist/cmmn-navigated-viewer.production.min.js'));
+// public/ sits next to src/ in the repository and next to dist/ in the package
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
+const VENDOR_DIR = join(PUBLIC_DIR, 'vendor');
 
 /**
  * The files the viewer page loads, by URL path. They are published package
  * files with nothing private in them, so they are served without the token.
+ * The vendor files (the cmmn-js viewer, its styles, the Flowable descriptor)
+ * are copied into public/vendor by `npm run build`, so the published package
+ * needs no dependencies installed.
  */
 const ASSETS = new Map([
-  ['/assets/cmmn-navigated-viewer.js', join(CMMN_JS_DIST, 'cmmn-navigated-viewer.production.min.js')],
-  ['/assets/diagram-js.css', join(CMMN_JS_DIST, 'assets/diagram-js.css')],
-  ['/assets/cmmn-embedded.css', join(CMMN_JS_DIST, 'assets/cmmn-font/css/cmmn-embedded.css')],
-  ['/assets/cmmn-js-flowable.css', join(CMMN_JS_DIST, 'assets/cmmn-js-flowable.css')],
-  ['/assets/flowable.json', require.resolve('flowable-cmmn-moddle/resources/flowable.json')],
+  ['/assets/cmmn-navigated-viewer.js', join(VENDOR_DIR, 'cmmn-navigated-viewer.js')],
+  ['/assets/diagram-js.css', join(VENDOR_DIR, 'diagram-js.css')],
+  ['/assets/cmmn-embedded.css', join(VENDOR_DIR, 'cmmn-embedded.css')],
+  ['/assets/cmmn-js-flowable.css', join(VENDOR_DIR, 'cmmn-js-flowable.css')],
+  ['/assets/flowable.json', join(VENDOR_DIR, 'flowable.json')],
   ['/assets/properties.js', join(PUBLIC_DIR, 'properties.js')],
   ['/assets/viewer.js', join(PUBLIC_DIR, 'viewer.js')],
   ['/assets/viewer.css', join(PUBLIC_DIR, 'viewer.css')],

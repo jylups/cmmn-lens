@@ -65,7 +65,7 @@ npm run lint
 npm test
 ```
 
-`npm run build` bundles what the page loads in edit mode (the cmmn-js Modeler and the Flowable properties panel, which have no browser bundle of their own) into `server/public/build/`, which git ignores. View mode works without it.
+`npm run build` builds the server package as it is published, so it runs with no dependencies installed: `server/dist/server.mjs` (the MCP server, bundled), `server/public/vendor/` (the cmmn-js viewer and the Flowable descriptor the page loads) and `server/public/build/` (the Modeler and the Flowable properties panel for edit mode). Git ignores all three. Run it before using the server from this repository; `npm test` runs it first.
 
 Validate the manifests with the Claude Code CLI:
 
@@ -110,7 +110,7 @@ claude --plugin-dir plugins/cmmn-lens
 
 cmmn-lens is [MIT](LICENSE) licensed.
 
-The viewer page includes code and files from other packages, bundled into the editor or served from `node_modules`: the cmmn-js fork and diagram-js, the CMMN and Flowable moddle packages, the Flowable properties panel and their dependencies. [`server/THIRD_PARTY_NOTICES.md`](server/THIRD_PARTY_NOTICES.md) lists each with its version, license and license text; `npm run build` writes it, CI checks that it matches the build, and the npm package ships it. They are MIT, ISC or Apache-2.0 licensed, except:
+The server package includes code and files from other packages, bundled into the server or the editor, or copied into `public/vendor`: the cmmn-js fork and diagram-js, the CMMN and Flowable moddle packages, the Flowable properties panel and their dependencies. [`server/THIRD_PARTY_NOTICES.md`](server/THIRD_PARTY_NOTICES.md) lists each with its version, license and license text; `npm run build` writes it, CI checks that it matches the build, and the npm package ships it. They are MIT, ISC, BSD-3-Clause or Apache-2.0 licensed, except:
 
 - the CMMN font (`cmmn-font`): SIL Open Font License 1.1
 - the Font Awesome icons the properties panel draws (`@fortawesome/free-solid-svg-icons`): CC BY 4.0 for the icons, MIT for the code

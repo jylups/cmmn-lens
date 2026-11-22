@@ -23,10 +23,10 @@
   },
   "type": "module",
   "bin": {
-    "cmmn-lens-server": "src/index.js"
+    "cmmn-lens-server": "dist/server.mjs"
   },
   "files": [
-    "src",
+    "dist",
     "public",
     "THIRD_PARTY_NOTICES.md"
   ],
@@ -40,16 +40,14 @@
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
+  "devDependencies": {
     "@jylups/cmmn-js": "0.24.1",
     "@jylups/cmmn-moddle": "6.1.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "cmmn-js-properties-panel-flowable": "3.0.1",
-    "flowable-cmmn-moddle": "1.5.0",
-    "zod": "^4.6.7"
-  },
-  "devDependencies": {
     "esbuild": "0.28.2",
-    "less": "4.9.1"
+    "flowable-cmmn-moddle": "1.5.0",
+    "less": "4.9.1",
+    "zod": "^4.6.7"
   }
 }
