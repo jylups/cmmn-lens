@@ -20,7 +20,7 @@ Or inside a Claude Code terminal session:
 
 Answer `y` to add the marketplace, then pick a scope (user scope makes it available in every project). With a Claude Code older than 2.1.292, add the marketplace first: `claude plugin marketplace add jylups/cmmn-lens`, then `claude plugin install cmmn-lens@cmmn-lens`.
 
-**Claude desktop app:** the app's sessions use the same plugins as the `claude` command, so the command above installs the plugin there too; start a new session afterwards. The app doesn't add a `claude` command to your shell: if `claude` isn't found, install the command-line tool with `curl -fsSL https://claude.ai/install.sh | bash`.
+**Claude desktop app:** the app's sessions use the same plugins as the `claude` command, so the command above installs the plugin there too; start a new session afterwards. The app doesn't add a `claude` command to your shell: if `claude` isn't found, install the command-line tool as [Claude Code's setup guide](https://code.claude.com/docs/en/setup) describes.
 
 The install may say an option isn't set: that is **Add the viewer selection to prompts**, which is on until you turn it off.
 
