@@ -4,6 +4,10 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
+## Unreleased
+
+- Edit mode takes `@jylups/cmmn-js` 0.25.1 and `cmmn-js-properties-panel-flowable` 3.6.0: copy, cut and paste of case elements (Cmd/Ctrl+C, X, V; a pasted plan item gets its own definition, with its Flowable attributes), two-finger panning on touch screens, and the panel's Flowable Design views (the case's own properties when nothing is selected, the model tree, variable mappings as tables, rules and reactivation conditions as True or an expression)
+
 ## 0.1.3 (2026-11-22)
 
 - The prompt hook names its interpreter in `command` and its file in `args`, as the plugin directory suggests; this form also starts on Windows without Git Bash
