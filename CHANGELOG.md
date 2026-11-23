@@ -4,6 +4,12 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
+## 0.1.3 (2026-11-22)
+
+- The prompt hook names its interpreter in `command` and its file in `args`, as the plugin directory suggests; this form also starts on Windows without Git Bash
+- The READMEs link to Claude Code's setup guide instead of showing a download-and-execute command, which the plugin directory flags as an install-time risk
+- docs/directory-submission.md records that the directory accepts the plugin's local server, hook and script only from Verified organizations
+
 ## 0.1.2 (2026-11-22)
 
 - The server package has no runtime dependencies: the server and everything it serves are bundled at build time, so npx downloads one package and the first start takes a second or two, also when several sessions start at once (0.1.1's first start could pass the 30-second limit with several sessions)
