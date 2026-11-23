@@ -44,7 +44,7 @@ Then start a new session: a session loads its plugins when it starts.
 - **Validates.** After each edit Claude checks the file with the CMMN and Flowable descriptors (broken references, duplicate ids, unknown attributes, elements with no shape) and fixes what it broke.
 - **Points at changes.** Claude highlights the elements it added or changed.
 - **Knows what you select.** Click an element and say "rename this" or "what does this do?". The properties panel shows the selection's Flowable attributes and criteria.
-- **Lets you edit.** Edit mode has the Flowable properties panel; saving writes the file. If Claude changed the file while you had unsaved edits, the viewer asks which version to keep, and Claude is told what you changed and saved.
+- **Lets you edit.** Edit mode has the Flowable properties panel and copy and paste (Cmd/Ctrl+C, X, V); saving writes the file. If Claude changed the file while you had unsaved edits, the viewer asks which version to keep, and Claude is told what you changed and saved.
 
 ## Try it
 
