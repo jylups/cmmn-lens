@@ -11,7 +11,7 @@ A Claude Code plugin that shows the local Flowable CMMN file Claude is editing i
 - It reads the `.cmmn` file you open in the viewer, and writes it only when you save from the viewer.
 - While the server runs, it keeps a small file (its port, token and project folder) in a `cmmn-lens` folder under the system's temporary folder, readable only by you, so the plugin's prompt hook can find it.
 - Before each prompt, a hook (Node) asks the running server for your selection in the viewer and adds it to the prompt's context. It can be turned off with the plugin's option.
-- It sends nothing to other servers and collects no usage data.
+- It sends nothing to other servers and collects no usage data. In edit mode, the **Help** tool opens Flowable's CMMN reference page for the selected element in a new browser tab when you click it.
 
 ## Requirements
 

@@ -30,6 +30,7 @@ const ASSETS = new Map([
   ['/assets/cmmn-embedded.css', join(VENDOR_DIR, 'cmmn-embedded.css')],
   ['/assets/cmmn-js-flowable.css', join(VENDOR_DIR, 'cmmn-js-flowable.css')],
   ['/assets/cmmn-js-touch.css', join(VENDOR_DIR, 'cmmn-js-touch.css')],
+  ['/assets/cmmn-js-flowable-tools.css', join(VENDOR_DIR, 'cmmn-js-flowable-tools.css')],
   ['/assets/flowable.json', join(VENDOR_DIR, 'flowable.json')],
   ['/assets/properties.js', join(PUBLIC_DIR, 'properties.js')],
   ['/assets/viewer.js', join(PUBLIC_DIR, 'viewer.js')],

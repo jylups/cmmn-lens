@@ -41,10 +41,10 @@
     "access": "public"
   },
   "devDependencies": {
-    "@jylups/cmmn-js": "0.25.1",
+    "@jylups/cmmn-js": "0.26.1",
     "@jylups/cmmn-moddle": "6.1.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
-    "cmmn-js-properties-panel-flowable": "3.14.1",
+    "cmmn-js-properties-panel-flowable": "3.14.2",
     "esbuild": "0.28.2",
     "flowable-cmmn-moddle": "1.5.0",
     "less": "4.9.1",

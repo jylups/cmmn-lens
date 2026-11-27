@@ -22,7 +22,7 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
     saveUrl,
     flowableUrl: '/assets/flowable.json',
     editorScriptUrl: '/assets/build/editor.js',
-    editorStyleUrl: '/assets/build/properties-panel.css'
+    editorStyleUrls: ['/assets/build/properties-panel.css', '/assets/cmmn-js-flowable-tools.css']
   });
 
   return `<!doctype html>
