@@ -4,7 +4,7 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
-## Unreleased
+## 0.1.5 (2026-11-27)
 
 - Edit mode takes `cmmn-js-properties-panel-flowable` 3.14.1: the model hierarchy's Models view (the forms, processes, cases and decisions the case refers to), radio choices for Asynchronous and Leave asynchronously, and fields for model keys, users and groups (plain text fields here, as the plugin offers no list of values to pick)
 - Edit mode loads the cmmn-js touch module: touch gestures and larger targets on touch screens, nothing changed with a mouse or trackpad
