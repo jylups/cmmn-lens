@@ -35,6 +35,7 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
   <link rel="stylesheet" href="/assets/diagram-js.css">
   <link rel="stylesheet" href="/assets/cmmn-embedded.css">
   <link rel="stylesheet" href="/assets/cmmn-js-flowable.css">
+  <link rel="stylesheet" href="/assets/cmmn-js-touch.css">
   <link rel="stylesheet" href="/assets/viewer.css">
 </head>
 <body>

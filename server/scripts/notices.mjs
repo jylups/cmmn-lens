@@ -21,7 +21,7 @@ function packageDirOf(file) {
 }
 
 async function licenseText(dir) {
-  const names = await readdir(dir);
+  const names = await readdir(dir).catch(() => []);
   // LICENSE, LICENSE.md, LICENSE-MIT.txt, COPYING …
   const file = names.find(name => /^(licen[cs]e|copying)([-.][\w.-]*)?$/i.test(name));
 
@@ -37,11 +37,33 @@ async function licenseText(dir) {
 export async function writeNotices({ root, inputs, out }) {
   const dirs = new Set();
 
+  // folders inside a package that carry a license of their own, such as code
+  // a package took from another project: package folder → { folder: text }
+  const embedded = new Map();
+  const seen = new Set();
+
   for (const file of Object.keys(inputs)) {
     const dir = packageDirOf(file);
 
-    if (dir) {
-      dirs.add(join(root, dir));
+    if (!dir) {
+      continue;
+    }
+
+    dirs.add(join(root, dir));
+
+    const folder = dirname(file);
+
+    if (folder !== dir && !seen.has(folder)) {
+      seen.add(folder);
+
+      const text = await licenseText(join(root, folder));
+
+      if (text) {
+        const own = embedded.get(join(root, dir)) ?? {};
+
+        own[relative(dir, folder)] = text;
+        embedded.set(join(root, dir), own);
+      }
     }
   }
 
@@ -59,7 +81,8 @@ export async function writeNotices({ root, inputs, out }) {
       version: manifest.version,
       license: manifest.license ?? manifest.licenses?.map(entry => entry.type).join(' OR ') ?? 'unknown',
       author: typeof manifest.author === 'string' ? manifest.author : manifest.author?.name,
-      text: await licenseText(dir)
+      text: await licenseText(dir),
+      embedded: embedded.get(dir) ?? {}
     });
   }
 
@@ -88,6 +111,10 @@ export async function writeNotices({ root, inputs, out }) {
       ? ['```', entry.text, '```'].join('\n')
       : `_The package ships no license file; its package.json declares the license ${entry.license}` +
         `${entry.author ? ` and the author ${entry.author}` : ''}._`, '');
+
+    for (const [folder, text] of Object.entries(entry.embedded)) {
+      lines.push(`The package's \`${folder}\` folder has a license of its own:`, '', ['```', text, '```'].join('\n'), '');
+    }
   }
 
   await writeFile(out, lines.join('\n'));

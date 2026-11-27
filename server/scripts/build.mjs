@@ -33,6 +33,7 @@ const VENDOR = {
   'diagram-js.css': join(cmmnJsDist, 'assets/diagram-js.css'),
   'cmmn-embedded.css': join(cmmnJsDist, 'assets/cmmn-font/css/cmmn-embedded.css'),
   'cmmn-js-flowable.css': join(cmmnJsDist, 'assets/cmmn-js-flowable.css'),
+  'cmmn-js-touch.css': join(cmmnJsDist, 'assets/cmmn-js-touch.css'),
   'flowable.json': require.resolve('flowable-cmmn-moddle/resources/flowable.json')
 };
 
