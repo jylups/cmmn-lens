@@ -44,7 +44,7 @@ Then start a new session: a session loads its plugins when it starts.
 - **Validates.** After each edit Claude checks the file with the CMMN and Flowable descriptors (broken references, duplicate ids, unknown attributes, elements with no shape) and fixes what it broke.
 - **Points at changes.** Claude highlights the elements it added or changed.
 - **Knows what you select.** Click an element and say "rename this" or "what does this do?". The properties panel shows the selection's Flowable attributes and criteria.
-- **Lets you edit.** Edit mode has the Flowable properties panel and copy and paste (Cmd/Ctrl+C, X, V); saving writes the file. If Claude changed the file while you had unsaved edits, the viewer asks which version to keep, and Claude is told what you changed and saved.
+- **Lets you edit.** Edit mode has the Flowable properties panel, and Copy, Cut, Paste and Help beside the selected element (or Cmd/Ctrl+C, X, V); saving writes the file. If Claude changed the file while you had unsaved edits, the viewer asks which version to keep, and Claude is told what you changed and saved.
 
 ## Try it
 
@@ -59,7 +59,7 @@ Then start a new session: a session loads its plugins when it starts.
 - **A web page on `127.0.0.1` only**, with a random port and a random token in its address; requests without the token, or from pages on other sites, are refused. It stops with the MCP server.
 - **Files:** it reads the `.cmmn` (or `.xml`) files Claude opens in the viewer, and writes one only when you save from the viewer. While it runs, it keeps a small file (its port, token and project folder) in a `cmmn-lens` folder under the system's temporary folder, readable only by you, so the prompt hook can find it.
 - **A prompt hook** (Node) runs before each prompt. It asks the local server for your selection in the viewer and for changes you saved there, and adds them to the prompt's context. It doesn't read or keep the text of your prompts, and it stores nothing.
-- **Nothing leaves your machine:** no other network requests, no telemetry, no accounts.
+- **Nothing leaves your machine:** no other network requests, no telemetry, no accounts. The one link out is the **Help** tool in edit mode, which opens Flowable's CMMN reference page for the selected element in a new browser tab when you click it.
 
 ## Settings
 

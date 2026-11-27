@@ -635,6 +635,13 @@
       options.keyboard = { bind: true };
       options.additionalModules = window.CmmnLensEditor.modules;
       options.propertiesPanel = { parent: propertiesEditorEl };
+
+      // keep the context pad within the canvas, left of the properties panel
+      options.contextPadPosition = {
+        visibleRight: function() {
+          return canvasEl.getBoundingClientRect().right;
+        }
+      };
       viewer = new window.CmmnLensEditor.Modeler(options);
       viewer.on('commandStack.changed', markDirty);
     } else {
@@ -644,15 +651,18 @@
     viewer.on('selection.changed', onSelectionChanged);
   }
 
-  /** Loads the editor bundle and the panel's styles, once. */
+  /** Loads the editor bundle and its styles, once. */
   function loadEditor() {
     if (!editorLoading) {
       editorLoading = new Promise(function(resolve, reject) {
-        var style = document.createElement('link');
+        // after the viewer's styles: the panel's, then the context pad tools'
+        config.editorStyleUrls.forEach(function(href) {
+          var style = document.createElement('link');
 
-        style.rel = 'stylesheet';
-        style.href = config.editorStyleUrl;
-        document.head.appendChild(style);
+          style.rel = 'stylesheet';
+          style.href = href;
+          document.head.appendChild(style);
+        });
 
         var script = document.createElement('script');
 

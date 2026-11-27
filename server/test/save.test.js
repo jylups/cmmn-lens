@@ -50,6 +50,7 @@ describe('saving from the page', () => {
     assert.match(html, /<button type="button" id="edit" hidden>Edit<\/button>/);
     assert.match(config.saveUrl, /^\/view\/[0-9a-f]+\/save\?t=/);
     assert.equal(config.editorScriptUrl, '/assets/build/editor.js');
+    assert.deepEqual(config.editorStyleUrls, ['/assets/build/properties-panel.css', '/assets/cmmn-js-flowable-tools.css']);
   });
 
   test('writes the model, keeps the file\'s permissions, and answers its version', async () => {
