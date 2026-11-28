@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             xmlns:di="http://www.omg.org/spec/DMN/20180521/DI/"
+             xmlns:flowable="http://flowable.org/dmn"
+             xmlns:design="http://flowable.org/design"
+             id="definitions_discount" name="Discount" namespace="http://www.flowable.org/dmn">
+  <extensionElements>
+    <design:tag>Samples</design:tag>
+  </extensionElements>
+  <inputData id="InputData_customer" name="Customer">
+    <variable id="Variable_customer" name="customer" typeRef="string"/>
+  </inputData>
+  <decision id="Decision_discount" name="Discount" flowable:forceDMN11="true">
+    <informationRequirement id="Requirement_customer">
+      <requiredInput href="#InputData_customer"/>
+    </informationRequirement>
+    <decisionTable id="Table_discount" hitPolicy="FIRST">
+      <input id="Input_type" label="Customer type">
+        <inputExpression id="Expression_type" typeRef="string">
+          <text>customerType</text>
+        </inputExpression>
+      </input>
+      <input id="Input_total" label="Order total">
+        <inputExpression id="Expression_total" typeRef="number">
+          <text>orderTotal</text>
+        </inputExpression>
+      </input>
+      <output id="Output_discount" label="Discount" name="discount" typeRef="number"/>
+      <rule id="Rule_gold">
+        <description>Gold customers always get 10%</description>
+        <inputEntry id="Entry_gold_type"><text>== "gold"</text></inputEntry>
+        <inputEntry id="Entry_gold_total"><text>-</text></inputEntry>
+        <outputEntry id="Entry_gold_discount"><text>0.10</text></outputEntry>
+      </rule>
+      <rule id="Rule_large">
+        <inputEntry id="Entry_large_type"><text>-</text></inputEntry>
+        <inputEntry id="Entry_large_total"><text>&gt;= 1000</text></inputEntry>
+        <outputEntry id="Entry_large_discount"><text>0.05</text></outputEntry>
+      </rule>
+      <rule id="Rule_none">
+        <inputEntry id="Entry_none_type"><text>-</text></inputEntry>
+        <inputEntry id="Entry_none_total"><text>-</text></inputEntry>
+        <outputEntry id="Entry_none_discount"><text>0</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <decision id="Decision_message" name="Discount message">
+    <informationRequirement id="Requirement_discount">
+      <requiredDecision href="#Decision_discount"/>
+    </informationRequirement>
+    <literalExpression id="Literal_message" typeRef="string">
+      <text>discount &gt; 0 ? 'You get a discount' : 'No discount'</text>
+    </literalExpression>
+  </decision>
+  <textAnnotation id="Annotation_review">
+    <text>Reviewed every quarter</text>
+  </textAnnotation>
+  <association id="Association_review">
+    <sourceRef href="#Decision_discount"/>
+    <targetRef href="#Annotation_review"/>
+  </association>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="Diagram_discount">
+      <dmndi:DMNShape id="Shape_customer" dmnElementRef="InputData_customer">
+        <dc:Bounds x="160" y="300" width="125" height="45"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="Shape_discount" dmnElementRef="Decision_discount">
+        <dc:Bounds x="160" y="160" width="180" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="Shape_message" dmnElementRef="Decision_message">
+        <dc:Bounds x="160" y="20" width="180" height="80"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNShape id="Shape_review" dmnElementRef="Annotation_review">
+        <dc:Bounds x="420" y="170" width="160" height="60"/>
+      </dmndi:DMNShape>
+      <dmndi:DMNEdge id="Edge_customer" dmnElementRef="Requirement_customer">
+        <di:waypoint x="222" y="300"/>
+        <di:waypoint x="222" y="240"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="Edge_discount" dmnElementRef="Requirement_discount">
+        <di:waypoint x="250" y="160"/>
+        <di:waypoint x="250" y="100"/>
+      </dmndi:DMNEdge>
+      <dmndi:DMNEdge id="Edge_review" dmnElementRef="Association_review">
+        <di:waypoint x="340" y="200"/>
+        <di:waypoint x="420" y="200"/>
+      </dmndi:DMNEdge>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

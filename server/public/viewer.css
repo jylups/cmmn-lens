@@ -49,6 +49,9 @@ body {
 .canvas {
   flex: 1;
   min-height: 0;
+  /* a wide decision table scrolls inside the canvas instead of pushing the panel away */
+  min-width: 0;
+  overflow: auto;
   position: relative;
 }
 
@@ -87,6 +90,18 @@ body {
 
 .djs-shape.cmmn-lens-highlight .djs-visual > :first-child {
   fill: #fef3c7 !important;
+}
+
+/* a decision table's highlighted and selected cells (dmn-js) */
+.canvas td.cmmn-lens-highlight,
+.canvas th.cmmn-lens-highlight {
+  background: #fef3c7 !important;
+  box-shadow: inset 0 0 0 1px #d97706;
+}
+
+.canvas td.cmmn-lens-selected,
+.canvas th.cmmn-lens-selected {
+  background: #e0ecff;
 }
 
 /* the canvas and the properties panel: side by side, or stacked when narrow */

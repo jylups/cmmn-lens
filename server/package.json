@@ -1,7 +1,7 @@
 {
   "name": "@jylups/cmmn-lens-server",
   "version": "0.2.0",
-  "description": "MCP server for the cmmn-lens plugin: serves an interactive viewer for local CMMN and BPMN files on localhost.",
+  "description": "MCP server for the cmmn-lens plugin: serves an interactive viewer for local CMMN, BPMN and DMN files on localhost.",
   "keywords": [
     "cmmn",
     "flowable",
@@ -41,6 +41,8 @@
     "access": "public"
   },
   "devDependencies": {
+    "@bpmn-io/dmn-migrate": "0.8.0",
+    "@bpmn-io/properties-panel": "3.60.2",
     "@jylups/cmmn-js": "0.26.1",
     "@jylups/cmmn-moddle": "6.1.1",
     "@jylups/flowable-bpmn-js": "0.1.0",
@@ -49,6 +51,10 @@
     "bpmn-font": "0.13.0",
     "bpmn-moddle": "10.3.1",
     "cmmn-js-properties-panel-flowable": "3.14.2",
+    "dmn-font": "0.6.2",
+    "dmn-js": "18.1.0",
+    "dmn-js-properties-panel": "3.13.0",
+    "dmn-moddle": "12.2.1",
     "esbuild": "0.28.2",
     "flowable-cmmn-moddle": "1.5.0",
     "less": "4.9.1",
