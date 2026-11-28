@@ -4,6 +4,10 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
+## 0.4.1 (2026-11-27)
+
+- The BPMN viewer no longer lists "unknown attribute" warnings for `flowable:sourceDockerX`, `sourceDockerY`, `targetDockerX` and `targetDockerY`, which Flowable writes on every edge: `@jylups/flowable-bpmn-js` 0.1.1 builds its viewer bundle with the Flowable descriptor that has them (0.1.0's bundle was built before they were added; jylups/bpmn-js-env#104). Edit mode and `validate` already read them
+
 ## 0.4.0 (2026-11-27)
 
 - Forms: `.form` files (form-js schemas) open in a read-only form-js 1.26.1 viewer, the 1.x line the case management apps use (they pin `^1.18.0`), rendered with no data; clicking a field selects it, and the agent's highlight marks fields by id or key. Edit opens the form-js editor with its component palette and properties panel; save and conflicts work as for the other types

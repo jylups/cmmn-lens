@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cp, copyFile, mkdtemp, rm } from 'node:fs/promises';
+import { cp, copyFile, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -51,5 +51,16 @@ test('the built server runs with no dependencies installed, as the published pac
   } finally {
     await rm(installed, { recursive: true });
     await rm(project, { recursive: true });
+  }
+});
+
+test('the BPMN viewer bundle knows the edge dockers Flowable writes on every edge, so they raise no import warnings', async () => {
+  // flowable-bpmn-js 0.1.0's bundle was built with flowable-bpmn-moddle 0.1.0, which lacked them
+  const viewer = await readFile(join(PACKAGE, 'public', 'vendor', 'bpmn', 'flowable-bpmn-navigated-viewer.js'), 'utf8');
+  const editor = await readFile(join(PACKAGE, 'public', 'build', 'bpmn', 'editor.js'), 'utf8');
+
+  for (const name of ['sourceDockerX', 'sourceDockerY', 'targetDockerX', 'targetDockerY']) {
+    assert.ok(viewer.includes(name), `the viewer bundle has ${name}`);
+    assert.ok(editor.includes(name), `the editor bundle has ${name}`);
   }
 });
