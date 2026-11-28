@@ -1,6 +1,6 @@
 {
   "name": "@jylups/cmmn-lens-server",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "MCP server for the cmmn-lens plugin: serves an interactive viewer for local CMMN files on localhost.",
   "keywords": [
     "cmmn",

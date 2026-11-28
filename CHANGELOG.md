@@ -4,7 +4,7 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
-## Unreleased
+## 0.1.6 (2026-11-27)
 
 - Edit mode takes `@jylups/cmmn-js` 0.26.1 and its context pad tools, as in Flowable Design: Copy, Cut and Paste beside the selected element (Paste on the case plan and stages while something is copied), the tools on the left and the shapes to add on the right, tasks and milestones resizable from their corners, a button that collapses the palette, and Help, which opens Flowable's CMMN reference page for the element in a new browser tab. Their styles load only in edit mode
 - Pasting a plan item with entry or exit criteria writes a valid model: the copy's criteria get their own sentries (cmmn-js 0.26.1; 0.1.4 and 0.1.5 left them on the original sentries, with diagram shapes that referred to missing ids)
