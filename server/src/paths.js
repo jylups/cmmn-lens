@@ -1,22 +1,29 @@
-import { realpath, stat } from 'node:fs/promises';
-import { extname, resolve } from 'node:path';
+import { open, realpath, stat } from 'node:fs/promises';
+import { basename, resolve } from 'node:path';
 
-/** The file types the tools open. */
-export const CMMN_EXTENSIONS = ['.cmmn', '.xml'];
+import { MODEL_TYPES, describeAccepted, typeByContent, typeByName, typeLabels } from './types/index.js';
+
+/** How much of an `.xml` file is read to find its root element. */
+const HEAD_BYTES = 64 * 1024;
 
 /**
- * Resolves the path of a CMMN file a tool was given, and checks that it is an
- * existing file of a CMMN type.
+ * Resolves the path of a model file a tool was given, checks that it is an
+ * existing file, and finds its model type: by its name, or for an `.xml` file
+ * by its root element's namespace.
  *
  * @param {string} baseDir the folder relative paths are resolved against
  * @param {string} path absolute, or relative to `baseDir`
- * @returns {Promise<string>} the file's real path, links resolved
+ * @param {import('./types/index.js').ModelType[]} [types]
+ * @returns {Promise<{ path: string, type: import('./types/index.js').ModelType }>}
+ *   the file's real path, links resolved, and its model type
  */
-export async function resolveCmmnFile(baseDir, path) {
+export async function resolveModelFile(baseDir, path, types = MODEL_TYPES) {
   const absolute = resolve(baseDir, path);
+  const byName = typeByName(basename(absolute), types);
+  const isXml = absolute.toLowerCase().endsWith('.xml');
 
-  if (!CMMN_EXTENSIONS.includes(extname(absolute).toLowerCase())) {
-    throw new Error(`${path} is not a CMMN file: the tools open ${CMMN_EXTENSIONS.join(' and ')} files.`);
+  if (!byName && !isXml) {
+    throw new Error(`${path} is not a ${typeLabels(types)} file: the tools open ${describeAccepted(types)} files.`);
   }
 
   let info;
@@ -31,5 +38,27 @@ export async function resolveCmmnFile(baseDir, path) {
     throw new Error(`${path} is not a file.`);
   }
 
-  return realpath(absolute);
+  const real = await realpath(absolute);
+  const type = byName ?? typeByContent(await readHead(real), types);
+
+  if (!type) {
+    throw new Error(
+      `${path} is not a ${typeLabels(types)} file: its root element has no namespace the tools know. ` +
+      `They open ${describeAccepted(types)} files.`
+    );
+  }
+
+  return { path: real, type };
+}
+
+async function readHead(path) {
+  const handle = await open(path, 'r');
+
+  try {
+    const { buffer, bytesRead } = await handle.read(Buffer.alloc(HEAD_BYTES), 0, HEAD_BYTES, 0);
+
+    return buffer.subarray(0, bytesRead).toString('utf8');
+  } finally {
+    await handle.close();
+  }
 }
