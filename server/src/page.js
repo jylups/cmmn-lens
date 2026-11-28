@@ -15,7 +15,7 @@
  * @returns {string}
  */
 export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, describeUrl, saveUrl, type }) {
-  const { styles, scripts, viewer, callbacks, moddleExtensions, editor } = type.page;
+  const { styles, scripts, viewer, viewerOptions, callbacks, moddleExtensions, editor, format = 'xml' } = type.page;
   const config = jsonForScript({
     name,
     type: type.id,
@@ -25,7 +25,9 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
     describeUrl,
     saveUrl,
     viewer,
+    viewerOptions: viewerOptions ?? {},
     callbacks,
+    format,
     moddleExtensions,
     editor: editor ?? null
   });

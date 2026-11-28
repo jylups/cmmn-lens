@@ -2,7 +2,7 @@
  * The read-only properties panel: shows the selected elements as the server
  * describes them from the file (server/src/selection.js for CMMN,
  * server/src/types/bpmn/index.js for BPMN, server/src/types/dmn/index.js for
- * DMN). Every value is set
+ * DMN, server/src/types/form/index.js for forms). Every value is set
  * as text, never parsed as HTML.
  */
 (function() {
@@ -205,6 +205,19 @@
     });
   }
 
+  /** A form field's settings: validation, conditions, options and the rest, objects as JSON. */
+  function formPropertiesSection(properties) {
+    if (!properties) {
+      return null;
+    }
+
+    return section('Settings', [rows(Object.keys(properties).map(function(name) {
+      var value = properties[name];
+
+      return [name, typeof value === 'object' ? JSON.stringify(value) : value, true];
+    }))]);
+  }
+
   function describeElement(element) {
     var node = el('article', 'properties-element');
 
@@ -242,7 +255,11 @@
         ['Expression', element.expression, true],
         ['Type', element.typeRef],
         ['Allowed values', element.allowedValues, true],
-        ['Text', element.text, true]
+        ['Text', element.text, true],
+        ['Key', element.key, true],
+        ['Schema version', element.schemaVersion],
+        ['Exported by', element.exporter],
+        ['Components', element.componentCount]
       ].concat(attributeRows(element.attributes))),
       definition && section(typeLabel(definition.type), [
         rows([['Id', definition.id, true]].concat(attributeRows(definition.attributes))),
@@ -263,7 +280,11 @@
       listSection('When', (element.when || []).map(function(entry) { return entry.input + ': ' + entry.test; }), true),
       listSection('Then', (element.then || []).map(function(entry) { return entry.output + ': ' + entry.value; }), true),
       listSection('Requires', requirementLines(element.requires)),
-      listSection('Required by', (element.requiredBy || []).map(nameAndId))
+      listSection('Required by', (element.requiredBy || []).map(nameAndId)),
+      formPropertiesSection(element.properties),
+      listSection('Contains', (element.components || []).map(function(child) {
+        return child.type + ' ' + nameAndId(child);
+      }))
     ].forEach(function(child) {
       if (child) {
         node.appendChild(child);

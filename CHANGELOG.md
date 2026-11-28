@@ -4,6 +4,13 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
+## Unreleased
+
+- Forms: `.form` files (form-js schemas) open in a read-only form-js 1.26.1 viewer, the 1.x line the case management apps use (they pin `^1.18.0`), rendered with no data; clicking a field selects it, and the agent's highlight marks fields by id or key. Edit opens the form-js editor with its component palette and properties panel; save and conflicts work as for the other types
+- `validate`, `get_selection`, `get_changes` and `highlight` work on forms: `validate` reports JSON that doesn't parse (with its line), duplicate ids, fields bound to the same key (counting groups' paths), keyed fields without a key and component types form-js doesn't know; a field is described with its full key, settings and group; changes list each changed setting, moves to another group, and layout moves
+- The read-only properties panel shows a form field's key, settings and the fields a group contains
+- The notices list form-js and its packages; the skill, the plugin's description and both READMEs cover forms
+
 ## 0.3.0 (2026-11-27)
 
 - DMN: `.dmn` files (and `.xml` files with a DMN root element) open in a viewer built on dmn-js 18.1.0, on the decision requirements diagram; a decision's table or literal expression opens from its shape, with "View DRD" to go back. In a table, clicking a rule or a column head selects the rule, input or output, and the agent's highlight marks rows and columns. Edit opens the dmn-js Modeler with the DMN properties panel. Following the file keeps the open table, and save and conflicts work as for the other types
