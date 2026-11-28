@@ -134,10 +134,11 @@ claude --plugin-dir plugins/cmmn-lens
 
 cmmn-lens is [MIT](LICENSE) licensed.
 
-The server package includes code and files from other packages, bundled into the server or the editor, or copied into `public/vendor`: the cmmn-js fork and diagram-js, the CMMN and Flowable moddle packages, the Flowable properties panel and their dependencies. [`server/THIRD_PARTY_NOTICES.md`](server/THIRD_PARTY_NOTICES.md) lists each with its version, license and license text; `npm run build` writes it, CI checks that it matches the build, and the npm package ships it. They are MIT, ISC, BSD-3-Clause or Apache-2.0 licensed, except:
+The server package includes code and files from other packages, bundled into the server or a model type's editor, or copied into `public/vendor`: for CMMN, the cmmn-js fork and diagram-js, the CMMN and Flowable moddle packages and the Flowable properties panel; for BPMN, bpmn-js and diagram-js, flowable-bpmn-js with its Flowable moddle, behaviors and properties panel, the bpmn.io properties panel and bpmnlint; and their dependencies. [`server/THIRD_PARTY_NOTICES.md`](server/THIRD_PARTY_NOTICES.md) lists each with its version, license and license text; `npm run build` writes it, CI checks that it matches the build, and the npm package ships it. They are MIT, ISC, BSD-3-Clause or Apache-2.0 licensed, except:
 
-- the CMMN font (`cmmn-font`): SIL Open Font License 1.1
-- the Font Awesome icons the properties panel draws (`@fortawesome/free-solid-svg-icons`): CC BY 4.0 for the icons, MIT for the code
-- `@jylups/cmmn-js`: see below
+- the CMMN font (`cmmn-font`) and the BPMN font (`bpmn-font`): SIL Open Font License 1.1
+- the Font Awesome icons the CMMN properties panel draws (`@fortawesome/free-solid-svg-icons`): CC BY 4.0 for the icons, MIT for the code
+- `bpmn-js`: the bpmn.io license, see below
+- `@jylups/cmmn-js`: MIT terms in its own LICENSE file, which its `package.json` points to
 
-**The bpmn.io watermark.** The LICENSE of the cmmn-js fork ([jylups/cmmn-js](https://github.com/jylups/cmmn-js)) has had no watermark clause since commit `ccfcc40` (2026-11-22). The version bundled here, 0.24.1, was released before that commit, so its LICENSE file, reproduced in the notices, still has the clause. A cmmn-js release with the updated LICENSE carries the new terms into this repository once the dependency is updated.
+**The bpmn.io watermark.** bpmn-js' license requires the bpmn.io watermark that links to bpmn.io to stay fully visible and not be covered. The BPMN viewer and editor show it in the canvas's bottom right corner, left of the properties panel, with nothing over it; don't hide or cover it when changing the page. The LICENSE of the cmmn-js fork ([jylups/cmmn-js](https://github.com/jylups/cmmn-js)) in the version bundled here, 0.26.1, has no watermark clause.

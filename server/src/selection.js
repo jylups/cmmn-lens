@@ -107,11 +107,18 @@ export function typeOf(element) {
   return element.$parent?.$instanceOf?.('cmmn:Case') && element.$instanceOf('cmmn:Stage') ? 'casePlanModel' : element.$type;
 }
 
-/** The attributes set in the file: the element's own values, and unknown attributes. */
-export function attributesOf(element) {
+/**
+ * The attributes set in the file: the element's own values, and unknown attributes.
+ *
+ * @param {object} element
+ * @param {{ hiddenReferences?: boolean }} [options] `hiddenReferences` also
+ *   reads non-enumerable properties, where bpmn-moddle keeps references
+ */
+export function attributesOf(element, { hiddenReferences = false } = {}) {
   const attributes = {};
+  const keys = hiddenReferences ? Object.getOwnPropertyNames(element) : Object.keys(element);
 
-  for (const key of Object.keys(element)) {
+  for (const key of keys) {
     const property = element.$descriptor.propertiesByName[key];
 
     if (!property?.isAttr || key === 'id' || key === 'name') {

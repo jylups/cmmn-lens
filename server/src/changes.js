@@ -1,5 +1,29 @@
 import { parseCmmn } from './moddle.js';
-import { attributesOf, typeOf } from './selection.js';
+import { attributesOf, typeOf as cmmnTypeOf } from './selection.js';
+
+/**
+ * How the diff reads one kind of model.
+ *
+ * @typedef {object} DiffDialect
+ * @property {(xml: string) => Promise<{ elementsById: Record<string, object> }>} parse
+ * @property {RegExp} diagram the types of diagram elements, which aren't listed
+ * @property {RegExp} shape the types of shapes and edges whose moves are counted
+ * @property {(element: object) => string} typeOf the type reported for an element
+ * @property {(element: object) => string|undefined} containerOf the name or id
+ *   of what an element sits in (in CMMN its stage), reported as `stage`
+ * @property {(element: object) => Record<string, unknown>} attributesOf the
+ *   attributes compared
+ */
+
+/** @type {DiffDialect} */
+const CMMN = {
+  parse: parseCmmn,
+  diagram: /^(cmmndi|di|dc):/,
+  shape: /^cmmndi:CMMN(Shape|Edge)$/,
+  typeOf: cmmnTypeOf,
+  attributesOf,
+  containerOf: element => nearest(element, parent => parent.$instanceOf?.('cmmn:Stage'))
+};
 
 /**
  * @typedef {object} ElementRef
@@ -27,36 +51,37 @@ import { attributesOf, typeOf } from './selection.js';
  *
  * @param {string} beforeXml
  * @param {string} afterXml
+ * @param {DiffDialect} [dialect] CMMN unless given
  * @returns {Promise<ModelChanges>}
  */
-export async function diffModels(beforeXml, afterXml) {
-  const [before, after] = await Promise.all([parseCmmn(beforeXml), parseCmmn(afterXml)]);
-  const beforeModel = modelElements(before.elementsById);
-  const afterModel = modelElements(after.elementsById);
+export async function diffModels(beforeXml, afterXml, dialect = CMMN) {
+  const [before, after] = await Promise.all([dialect.parse(beforeXml), dialect.parse(afterXml)]);
+  const beforeModel = modelElements(before.elementsById, dialect);
+  const afterModel = modelElements(after.elementsById, dialect);
   const changes = { added: [], removed: [], changed: [], shapesMoved: 0 };
 
   for (const [id, element] of afterModel) {
     const old = beforeModel.get(id);
 
     if (!old) {
-      changes.added.push(ref(element));
+      changes.added.push(ref(element, dialect));
       continue;
     }
 
-    const differences = compare(old, element);
+    const differences = compare(old, element, dialect);
 
     if (Object.keys(differences).length) {
-      changes.changed.push({ ...ref(element), changes: differences });
+      changes.changed.push({ ...ref(element, dialect), changes: differences });
     }
   }
 
   for (const [id, element] of beforeModel) {
     if (!afterModel.has(id)) {
-      changes.removed.push(ref(element));
+      changes.removed.push(ref(element, dialect));
     }
   }
 
-  changes.shapesMoved = countMovedShapes(before.elementsById, after.elementsById);
+  changes.shapesMoved = countMovedShapes(before.elementsById, after.elementsById, dialect);
 
   return changes;
 }
@@ -116,11 +141,11 @@ function typeLabel(type) {
 }
 
 /** The model's own elements by id: everything with an id outside the diagram. */
-function modelElements(elementsById) {
+function modelElements(elementsById, dialect) {
   const elements = new Map();
 
   for (const [id, element] of Object.entries(elementsById)) {
-    if (!isDiagram(element)) {
+    if (!dialect.diagram.test(element.$type)) {
       elements.set(id, element);
     }
   }
@@ -128,28 +153,25 @@ function modelElements(elementsById) {
   return elements;
 }
 
-function isDiagram(element) {
-  return /^(cmmndi|di|dc):/.test(element.$type);
-}
-
-function stageOf(element) {
+/** The name or id of the nearest parent that `matches`. */
+export function nearest(element, matches) {
   let parent = element.$parent;
 
-  while (parent && !parent.$instanceOf?.('cmmn:Stage')) {
+  while (parent && !matches(parent)) {
     parent = parent.$parent;
   }
 
   return parent ? parent.name ?? parent.id : undefined;
 }
 
-function ref(element) {
-  const result = { id: element.id, type: typeOf(element) };
+function ref(element, dialect) {
+  const result = { id: element.id, type: dialect.typeOf(element) };
 
   if (element.name) {
     result.name = element.name;
   }
 
-  const stage = stageOf(element);
+  const stage = dialect.containerOf(element);
 
   if (stage) {
     result.stage = stage;
@@ -158,7 +180,7 @@ function ref(element) {
   return result;
 }
 
-function compare(old, element) {
+function compare(old, element, dialect) {
   const differences = {};
 
   if (old.$type !== element.$type) {
@@ -173,12 +195,14 @@ function compare(old, element) {
     differences.event = [old.standardEvent, element.standardEvent];
   }
 
-  if (stageOf(old) !== stageOf(element)) {
-    differences.stage = [stageOf(old), stageOf(element)];
+  const [stageBefore, stageAfter] = [dialect.containerOf(old), dialect.containerOf(element)];
+
+  if (stageBefore !== stageAfter) {
+    differences.stage = [stageBefore, stageAfter];
   }
 
-  const before = attributesOf(old);
-  const after = attributesOf(element);
+  const before = dialect.attributesOf(old);
+  const after = dialect.attributesOf(element);
 
   for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
     if (before[key] !== after[key]) {
@@ -200,13 +224,13 @@ function compare(old, element) {
 function textBodies(element) {
   const parts = [];
 
-  for (const key of ['body', 'text']) {
+  for (const key of ['body', 'text', 'script']) {
     if (typeof element[key] === 'string') {
       parts.push(element[key].trim());
     }
   }
 
-  for (const key of ['condition', 'ifPart']) {
+  for (const key of ['condition', 'ifPart', 'conditionExpression', 'completionCondition']) {
     const nested = element[key];
 
     if (nested && typeof nested === 'object') {
@@ -218,11 +242,11 @@ function textBodies(element) {
 }
 
 /** Diagram shapes and edges whose bounds or waypoints differ between the versions. */
-function countMovedShapes(beforeById, afterById) {
+function countMovedShapes(beforeById, afterById, dialect) {
   let count = 0;
 
   for (const [id, element] of Object.entries(afterById)) {
-    if (!/^cmmndi:CMMN(Shape|Edge)$/.test(element.$type)) {
+    if (!dialect.shape.test(element.$type)) {
       continue;
     }
 

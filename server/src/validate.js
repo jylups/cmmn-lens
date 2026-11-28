@@ -28,18 +28,32 @@ const DRAWN_TYPES = [
  */
 
 /**
- * Checks CMMN XML the way the viewer reads it: with the CMMN and Flowable
- * descriptors.
+ * How validation reads one kind of model: `parse` reads the XML (rejecting
+ * when it doesn't parse); `missingFromDiagram` lists the elements the viewer
+ * would draw that have no shape.
+ *
+ * @typedef {object} ValidationDialect
+ * @property {(xml: string) => Promise<{ rootElement: object, elementsById: Record<string, object>, warnings: object[] }>} parse
+ * @property {(rootElement: object, elementsById: Record<string, object>, xml: string) => Problem[]} missingFromDiagram
+ */
+
+/** @type {ValidationDialect} */
+const CMMN = { parse: parseCmmn, missingFromDiagram };
+
+/**
+ * Checks model XML the way the viewer reads it: CMMN with the CMMN and
+ * Flowable descriptors, unless another dialect is given.
  *
  * @param {string} xml
+ * @param {ValidationDialect} [dialect]
  * @returns {Promise<{ isValid: boolean, errorCount: number, warningCount: number, problems: Problem[] }>}
  */
-export async function validateXml(xml) {
+export async function validateXml(xml, dialect = CMMN) {
   const problems = [];
   let result;
 
   try {
-    result = await parseCmmn(xml);
+    result = await dialect.parse(xml);
   } catch (error) {
     problems.push({ level: 'error', ...parseFailure(error.message) });
 
@@ -50,7 +64,7 @@ export async function validateXml(xml) {
     problems.push(fromWarning(warning, xml));
   }
 
-  problems.push(...missingFromDiagram(result.rootElement, result.elementsById, xml));
+  problems.push(...dialect.missingFromDiagram(result.rootElement, result.elementsById, xml));
 
   problems.sort((a, b) => (a.line ?? Infinity) - (b.line ?? Infinity));
 
@@ -153,19 +167,40 @@ function missingFromDiagram(definitions, elementsById, xml) {
     }
   }
 
+  return shapeProblems({
+    elementsById,
+    drawn,
+    drawnTypes: DRAWN_TYPES,
+    hasDiagram: diagrams.length > 0,
+    noDiagram: 'The file has no diagram (CMMNDI), so the viewer shows nothing. Add shapes for the case plan model and its plan items.',
+    xml
+  });
+}
+
+/**
+ * Warnings for the elements of the drawn types that have no shape, or one
+ * warning when the file has no diagram at all.
+ *
+ * @param {object} options
+ * @param {Record<string, object>} options.elementsById
+ * @param {Set<object>} options.drawn the elements that have a shape
+ * @param {string[]} options.drawnTypes
+ * @param {boolean} options.hasDiagram
+ * @param {string} options.noDiagram the warning when there is no diagram
+ * @param {string} options.xml
+ * @returns {Problem[]}
+ */
+export function shapeProblems({ elementsById, drawn, drawnTypes, hasDiagram, noDiagram, xml }) {
   const missing = Object.values(elementsById).filter(element =>
-    DRAWN_TYPES.some(type => element.$instanceOf(type)) && !drawn.has(element)
+    drawnTypes.some(type => element.$instanceOf(type)) && !drawn.has(element)
   );
 
   if (!missing.length) {
     return [];
   }
 
-  if (!diagrams.length) {
-    return [{
-      level: 'warning',
-      message: 'The file has no diagram (CMMNDI), so the viewer shows nothing. Add shapes for the case plan model and its plan items.'
-    }];
+  if (!hasDiagram) {
+    return [{ level: 'warning', message: noDiagram }];
   }
 
   return missing.map(element => ({
@@ -177,7 +212,7 @@ function missingFromDiagram(definitions, elementsById, xml) {
 }
 
 function describe(element) {
-  const type = element.$type.replace(/^cmmn:/, '');
+  const type = element.$type.replace(/^[a-z]+:/, '');
   const name = element.name ?? element.definitionRef?.name;
 
   return name ? `${type} ${element.id} ("${name}")` : `${type} ${element.id}`;

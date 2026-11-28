@@ -80,4 +80,4 @@ Report problems and ask questions in the [issues](https://github.com/jylups/cmmn
 
 ## License
 
-MIT. The viewer includes third-party packages under their own licenses, listed in the server package's `THIRD_PARTY_NOTICES.md`.
+MIT. The viewer includes third-party packages under their own licenses, listed in the server package's `THIRD_PARTY_NOTICES.md`. The BPMN viewer is built on bpmn-js, whose license requires the bpmn.io watermark in the diagram's corner to stay visible.

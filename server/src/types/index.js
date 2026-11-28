@@ -1,3 +1,4 @@
+import bpmn from './bpmn/index.js';
 import cmmn from './cmmn.js';
 
 /**
@@ -62,7 +63,7 @@ import cmmn from './cmmn.js';
  */
 
 /** @type {ModelType[]} */
-export const MODEL_TYPES = [cmmn];
+export const MODEL_TYPES = [cmmn, bpmn];
 
 /** The model type with an id, if there is one. */
 export function modelType(id) {

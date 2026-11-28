@@ -5,11 +5,14 @@
 //   SDK, zod, the CMMN and Flowable moddle packages)
 // - public/vendor/: the files the viewer page loads as they are, for each
 //   model type (for CMMN: the cmmn-js viewer bundle, its styles, the Flowable
-//   descriptor)
+//   descriptor; for BPMN, in vendor/bpmn: the flowable-bpmn-js viewer bundle
+//   and its styles)
 // - public/build/<type>/: what edit mode loads for each model type, built
 //   separately so a page loads only its own type's (for CMMN: editor.js, the
 //   Modeler and the Flowable properties panel, bundled, and
-//   properties-panel.css, the panel's LESS styles, compiled)
+//   properties-panel.css, the panel's LESS styles, compiled; for BPMN:
+//   editor.js, the flowable-bpmn-js Modeler with its properties panel, lint
+//   and touch module)
 // - THIRD_PARTY_NOTICES.md: every package whose code or files the package
 //   carries
 //
@@ -29,6 +32,7 @@ const require = createRequire(import.meta.url);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const cmmnJsDist = dirname(require.resolve('@jylups/cmmn-js/dist/cmmn-navigated-viewer.production.min.js'));
+const bpmnJsDist = dirname(require.resolve('@jylups/flowable-bpmn-js/dist/flowable-bpmn-navigated-viewer.production.min.js'));
 
 /**
  * What each model type's page needs built: `vendor`, files copied into
@@ -52,6 +56,23 @@ const TYPES = [
     styles: {
       'properties-panel.css': () => compileLess(require.resolve('cmmn-js-properties-panel-flowable/styles/properties.less'))
     }
+  },
+  {
+    id: 'bpmn',
+    // flowable-bpmn-js ships its viewer bundle and copies of the bpmn-js,
+    // properties panel and linting styles
+    vendor: {
+      'bpmn/flowable-bpmn-navigated-viewer.js': join(bpmnJsDist, 'flowable-bpmn-navigated-viewer.production.min.js'),
+      'bpmn/diagram-js.css': join(bpmnJsDist, 'assets/diagram-js.css'),
+      'bpmn/bpmn-js.css': join(bpmnJsDist, 'assets/bpmn-js.css'),
+      'bpmn/bpmn-embedded.css': join(bpmnJsDist, 'assets/bpmn-font/css/bpmn-embedded.css'),
+      'bpmn/flowable-bpmn-js.css': join(bpmnJsDist, 'assets/flowable-bpmn-js.css'),
+      'bpmn/flowable-bpmn-js-touch.css': join(bpmnJsDist, 'assets/flowable-bpmn-js-touch.css'),
+      'bpmn/properties-panel.css': join(bpmnJsDist, 'assets/properties-panel.css'),
+      'bpmn/bpmn-js-bpmnlint.css': join(bpmnJsDist, 'assets/bpmn-js-bpmnlint.css')
+    },
+    editor: join(root, 'client', 'bpmn', 'editor.js'),
+    styles: {}
   }
 ];
 
@@ -61,11 +82,14 @@ async function compileLess(file) {
   return css;
 }
 
-await mkdir(join(root, 'public', 'vendor'), { recursive: true });
+await rm(join(root, 'public', 'vendor'), { recursive: true, force: true });
 
 for (const type of TYPES) {
   for (const [name, source] of Object.entries(type.vendor)) {
-    await copyFile(source, join(root, 'public', 'vendor', name));
+    const target = join(root, 'public', 'vendor', name);
+
+    await mkdir(dirname(target), { recursive: true });
+    await copyFile(source, target);
   }
 }
 
