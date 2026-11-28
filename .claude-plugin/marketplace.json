@@ -5,13 +5,13 @@
     "url": "https://github.com/jylups"
   },
   "metadata": {
-    "description": "The cmmn-lens plugin: a viewer for local Flowable CMMN files."
+    "description": "The cmmn-lens plugin: a viewer for local Flowable CMMN and BPMN files."
   },
   "plugins": [
     {
       "name": "cmmn-lens",
       "source": "./plugins/cmmn-lens",
-      "description": "Shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat, and tells Claude what you select."
+      "description": "Shows the local Flowable CMMN or BPMN file Claude is editing in an interactive viewer beside the chat, and tells Claude what you select."
     }
   ]
 }

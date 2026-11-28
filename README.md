@@ -1,6 +1,6 @@
 # cmmn-lens
 
-A Claude Code plugin that shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
+A Claude Code plugin that shows the local Flowable CMMN or BPMN file Claude is editing in an interactive viewer beside the chat. The view follows the file as it changes, lets you select and inspect elements, and tells Claude what you selected.
 
 **Status:** 0.1.0 is released ([release notes](https://github.com/jylups/cmmn-lens/releases/tag/v0.1.0)); the plugin starts its server with `npx @jylups/cmmn-lens-server@0.1.0` from npm. See the [issues](https://github.com/jylups/cmmn-lens/issues) and milestones for what comes next.
 
@@ -8,10 +8,10 @@ A Claude Code plugin that shows the local Flowable CMMN file Claude is editing i
 
 - A local MCP server, started by Claude Code when the plugin is enabled.
 - A web page served by that server on `localhost` only, with a random port and token. In the Claude desktop app the page opens in the built-in browser pane; in the terminal and VS Code it opens in your browser.
-- It reads the `.cmmn` file you open in the viewer, and writes it only when you save from the viewer.
+- It reads the `.cmmn`, `.bpmn` or `.bpmn20.xml` file you open in the viewer, and writes it only when you save from the viewer.
 - While the server runs, it keeps a small file (its port, token and project folder) in a `cmmn-lens` folder under the system's temporary folder, readable only by you, so the plugin's prompt hook can find it.
 - Before each prompt, a hook (Node) asks the running server for your selection in the viewer and adds it to the prompt's context. It can be turned off with the plugin's option.
-- It sends nothing to other servers and collects no usage data. In edit mode, the **Help** tool opens Flowable's CMMN reference page for the selected element in a new browser tab when you click it.
+- It sends nothing to other servers and collects no usage data. In CMMN edit mode, the **Help** tool opens Flowable's CMMN reference page for the selected element in a new browser tab when you click it; in a BPMN diagram, the bpmn.io watermark opens bpmn.io when you click it.
 
 ## Requirements
 
@@ -89,7 +89,7 @@ npm run lint
 npm test
 ```
 
-`npm run build` builds the server package as it is published, so it runs with no dependencies installed: `server/dist/server.mjs` (the MCP server, bundled), `server/public/vendor/` (the cmmn-js viewer and the Flowable descriptor the page loads) and `server/public/build/` (the Modeler and the Flowable properties panel for edit mode). Git ignores all three. Run it before using the server from this repository; `npm test` runs it first.
+`npm run build` builds the server package as it is published, so it runs with no dependencies installed: `server/dist/server.mjs` (the MCP server, bundled), `server/public/vendor/` (each model type's viewer and styles, and the Flowable CMMN descriptor, which the page loads) and `server/public/build/<type>/` (each model type's Modeler and Flowable properties panel for edit mode). Git ignores all three. Run it before using the server from this repository; `npm test` runs it first.
 
 Validate the manifests with the Claude Code CLI:
 
@@ -102,25 +102,27 @@ claude plugin validate --strict plugins/cmmn-lens
 
 `server/` is an MCP server (stdio) with five tools so far: `open_view`, `validate`, `get_selection`, `highlight` and `get_changes`.
 
-`open_view`: given the path of a `.cmmn` file, it starts a web server on `127.0.0.1` with a random port, and returns the URL of a page that shows the diagram with the cmmn-js viewer and the Flowable extensions. Calling it again for the same file returns the same URL. Every page and file request needs the server's random token, and the web server stops when the MCP server exits.
+Each kind of model is a model type in `server/src/types/`: CMMN (`.cmmn`) and BPMN (`.bpmn`, `.bpmn20.xml`), and `.xml` files by their root element. A type parses, validates, describes selections, compares versions and resolves highlights, and says what the page loads for it.
+
+`open_view`: given the path of a model file, it starts a web server on `127.0.0.1` with a random port, and returns the URL of a page that shows the diagram, and the file's model type. CMMN files show in the cmmn-js viewer with the Flowable extensions, BPMN files in the flowable-bpmn-js viewer. Calling it again for the same file returns the same URL. Every page and file request needs the server's random token, and the web server stops when the MCP server exits.
 
 The page follows the file: the server watches the file's folder and tells the page, over server-sent events, when the content changes, so edits, shell writes and editors' saves all show within a second. The page keeps the zoom and scroll position, lists import errors and warnings under its bar, and keeps the last version that opened when a new one doesn't, or when the file is deleted.
 
-**Edit** switches the page to the cmmn-js Modeler with the Flowable properties panel (copy, cut and paste with Cmd/Ctrl+C, X, V); **Save** (or Cmd/Ctrl+S) writes the model to the file, replacing it in one step and keeping its permissions, and **Done** goes back to the viewer. While there are no unsaved edits, changes to the file still show in the editor. When the file changes under unsaved edits (Claude edited it, say), a bar asks whether to load the file's version or keep your edits, and a save made on an older version is refused, so neither side's change is lost without you choosing.
+**Edit** switches the page to the type's Modeler with its Flowable properties panel: for CMMN the cmmn-js Modeler (copy, cut and paste with Cmd/Ctrl+C, X, V), for BPMN the flowable-bpmn-js Modeler with lint; **Save** (or Cmd/Ctrl+S) writes the model to the file, replacing it in one step and keeping its permissions, and **Done** goes back to the viewer. While there are no unsaved edits, changes to the file still show in the editor. When the file changes under unsaved edits (Claude edited it, say), a bar asks whether to load the file's version or keep your edits, and a save made on an older version is refused, so neither side's change is lost without you choosing.
 
-Beside the diagram (under it when the pane is narrow) a read-only properties panel shows the selected elements as the file has them: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. It can be hidden. A page that loads again shows the selection the server holds.
+Beside the diagram (under it when the pane is narrow) a read-only properties panel shows the selected elements as the file has them, with their attributes: in CMMN the task or other item a plan item stands for, its entry and exit criteria with their sentries, and its stage; in BPMN the flows in and out with their conditions, a flow's ends, event definitions, and the lane and process. It can be hidden. A page that loads again shows the selection the server holds.
 
-`validate`: given the path of a `.cmmn` file, it parses it the way the viewer does, with the CMMN and Flowable descriptors, and lists the problems with their element ids and lines. Errors are XML that doesn't parse, duplicate ids and references to elements that don't exist. Warnings are attributes nothing reads and elements with no shape in the diagram, which the viewer can't show.
+`validate`: given the path of a model file, it parses it the way the viewer does, with the CMMN or BPMN descriptors and the Flowable ones (BPMN's Activiti namespace read as Flowable), and lists the problems with their element ids and lines. Errors are XML that doesn't parse, duplicate ids and references to elements that don't exist. Warnings are attributes nothing reads and elements with no shape in the diagram, which the viewer can't show.
 
 While it runs, the server lists itself (port, token, project folder) in a registry folder under the system's temporary folder, readable only by you, and removes the entry when it stops. The plugin's `UserPromptSubmit` hook (`plugins/cmmn-lens/hooks/selection-context.mjs`) reads the servers of the session's project, asks each for its selection (`GET /selection`, with the token), and adds the newest to the prompt's context, with the changes the user saved since the last prompt (`GET /changes`).
 
 `get_selection`: the page posts the user's selection to the server as it changes, and keeps it across updates of the file. The tool describes the selected elements from the file as it is now: the task or other item a plan item stands for, its attributes, its entry and exit criteria with their sentries, and its stage. Without a path it reads the viewer whose selection changed last.
 
-`highlight`: marks elements in the view and scrolls them into view, until the file changes again. A task, stage or milestone is marked through the plan items that use it, and a sentry through its criteria. The mark applies to the version of the file it was made for, so a highlight sent right after an edit shows once the page has that version.
+`highlight`: marks elements in the view and scrolls them into view, until the file changes again. In CMMN a task, stage or milestone is marked through the plan items that use it, and a sentry through its criteria; in BPMN a process through its pools, and a message, signal, error or escalation through the events that use it. The mark applies to the version of the file it was made for, so a highlight sent right after an edit shows once the page has that version.
 
 `get_changes`: when the user saves from the viewer, the server compares the version it replaces with the new one, element by element (added, removed and changed elements, with each change before and after, and a count of moved shapes), and keeps the result until the agent has seen it. The tool returns it once; the prompt hook adds it to the next prompt.
 
-To try it, open a Claude Code session in this folder: `.mcp.json` registers the server as `cmmn-lens-dev` (approve it when asked), and `server/test/fixtures/claim.cmmn` is a small sample. The plugin itself starts the server from the published npm package once that exists.
+To try it, open a Claude Code session in this folder: `.mcp.json` registers the server as `cmmn-lens-dev` (approve it when asked), and `server/test/fixtures/claim.cmmn` and `holiday.bpmn20.xml` are small samples. The plugin itself starts the server from the published npm package once that exists.
 
 Releases: see [RELEASING.md](RELEASING.md) and [CHANGELOG.md](CHANGELOG.md).
 
