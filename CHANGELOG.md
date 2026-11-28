@@ -4,9 +4,10 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
-## Unreleased
+## 0.2.0 (2026-11-27)
 
-- The server reads files through model types, so BPMN, DMN and forms can be added one module each. CMMN is the only type so far and works as before. An `.xml` file opens when its root element is in a model type's namespace (a CMMN `.xml` file as before); other `.xml` files are refused with a message instead of failing to parse
+- The server package's description and README name BPMN
+- The server reads files through model types, so BPMN, DMN and forms are added one module each. CMMN works as before. An `.xml` file opens when its root element is in a model type's namespace (a CMMN `.xml` file as before); other `.xml` files are refused with a message instead of failing to parse
 - The viewer page loads what the file's model type needs: its viewer script and styles with the page, and its editor bundle and styles on Edit. Following, selection, highlight, the properties panel, save and conflicts are shared by every type. The build writes each type's editor separately, under `public/build/<type>/` (the CMMN editor moves to `/assets/build/cmmn/editor.js`)
 - BPMN: `.bpmn` and `.bpmn20.xml` files (and `.xml` files with a BPMN root element) open in a viewer built on `@jylups/flowable-bpmn-js` 0.1.0, and Edit opens its Modeler with the Flowable properties panel, lint and the touch module. Following, selection, highlight, save and conflicts work as for CMMN. `validate` checks BPMN with the Flowable descriptor (the Activiti namespace read as Flowable, unknown Flowable elements kept); `get_selection` describes Flowable attributes, flows in and out, conditions and defaults, event definitions, and the lane and process; `get_changes` and `highlight` work on BPMN files, a message or signal highlighting the events that use it
 - The read-only properties panel shows a BPMN element's flows in and out with their conditions and the default flow, a flow's ends, event definitions, documentation, and its lane and process
