@@ -104,6 +104,23 @@ body {
   background: #e0ecff;
 }
 
+/* a form's highlighted and selected fields (form-js) */
+.canvas .fjs-element.cmmn-lens-highlight {
+  background: #fef3c7;
+  outline: 2px solid #d97706;
+  outline-offset: 2px;
+}
+
+.canvas .fjs-element.cmmn-lens-selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* the form fills the canvas with room around it, and scrolls */
+.canvas > .fjs-container {
+  padding: 12px 20px;
+}
+
 /* the canvas and the properties panel: side by side, or stacked when narrow */
 .workspace {
   flex: 1;

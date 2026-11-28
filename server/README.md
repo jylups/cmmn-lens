@@ -3,7 +3,7 @@
 The MCP server of the [cmmn-lens](https://github.com/jylups/cmmn-lens) plugin
 for Claude Code. The plugin starts it; you don't need to install it yourself.
 
-It serves an interactive viewer for local Flowable CMMN, BPMN and DMN files on `localhost`
+It serves an interactive viewer for local Flowable CMMN, BPMN and DMN files and form-js forms on `localhost`
 (random port and token), which follows the file as it changes, shows the
 selected elements' properties, and has an edit mode with the Flowable
 properties panel. Its tools let Claude open the viewer (`open_view`), check a

@@ -1,6 +1,7 @@
 import bpmn from './bpmn/index.js';
 import cmmn from './cmmn.js';
 import dmn from './dmn/index.js';
+import form from './form/index.js';
 import { rootNamespace } from './namespace.js';
 
 export { rootNamespace };
@@ -59,6 +60,10 @@ export { rootNamespace };
  *   class built on diagram-js, with importXML, saveXML and get(service)
  * @property {boolean} callbacks importXML and saveXML take callbacks (cmmn-js);
  *   false when they return promises (bpmn-js, dmn-js)
+ * @property {object} [viewerOptions] more options for the viewer's constructor
+ * @property {'xml'|'json'} [format] `json` for a form-js schema, which the
+ *   viewer reads with importSchema and the editor writes with saveSchema;
+ *   XML (importXML, saveXML) when left out
  * @property {Record<string, string>} moddleExtensions descriptors the page
  *   fetches and passes to the viewer, by name
  * @property {{ script: string, styles: string[], global: string }} [editor]
@@ -67,7 +72,7 @@ export { rootNamespace };
  */
 
 /** @type {ModelType[]} */
-export const MODEL_TYPES = [cmmn, bpmn, dmn];
+export const MODEL_TYPES = [cmmn, bpmn, dmn, form];
 
 /** The model type with an id, if there is one. */
 export function modelType(id) {

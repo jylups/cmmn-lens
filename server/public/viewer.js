@@ -231,7 +231,8 @@
     var ids = [];
 
     elements.forEach(function(element) {
-      var id = element.businessObject && element.businessObject.id;
+      // a diagram element stands for its business object; a form field is itself
+      var id = element.businessObject ? element.businessObject.id : element && element.id;
 
       if (id && ids.indexOf(id) < 0) {
         ids.push(id);
@@ -312,7 +313,8 @@
       return;
     }
 
-    var ids = idsOf(event.newSelection);
+    // diagram-js sends the selected elements; the form editor the one selected field
+    var ids = idsOf(event.newSelection || (event.selection ? [event.selection] : []));
 
     if (!sameIds(ids, selectedIds)) {
       selectedIds = ids;
@@ -324,14 +326,30 @@
   /**
    * In a decision table (dmn-js), a click selects the rule of the row, or the
    * input or output of the column head; in a literal expression, the decision.
+   * In the form viewer, a click selects the field (`data-id`); the form editor
+   * reports its own selection.
    */
   function onTableClick(event) {
-    if (!openDecisionId() || service('canvas')) {
-      return;
+    var id;
+
+    if (config.format === 'json') {
+      if (instanceKind !== 'view') {
+        return;
+      }
+
+      var field = event.target.closest && event.target.closest('[data-id]');
+
+      id = field ? field.getAttribute('data-id') : null;
+    } else {
+      if (!openDecisionId() || service('canvas')) {
+        return;
+      }
+
+      var cell = event.target.closest && event.target.closest('[data-row-id], [data-col-id], [data-element-id]');
+
+      id = cell ? cell.getAttribute('data-row-id') || cell.getAttribute('data-col-id') || cell.getAttribute('data-element-id') : openDecisionId();
     }
 
-    var cell = event.target.closest && event.target.closest('[data-row-id], [data-col-id], [data-element-id]');
-    var id = cell ? cell.getAttribute('data-row-id') || cell.getAttribute('data-col-id') || cell.getAttribute('data-element-id') : openDecisionId();
     var ids = id ? [id] : [];
 
     if (!sameIds(ids, selectedIds)) {
@@ -342,9 +360,16 @@
     }
   }
 
-  /** Nodes of the open table that show an element: a rule's row, an input's or output's column. */
+  /**
+   * Nodes that show an element where there is no canvas: a rule's row, an
+   * input's or output's column in a decision table; a form field.
+   */
   function tableNodes(id) {
     var escaped = window.CSS && CSS.escape ? CSS.escape(id) : id;
+
+    if (config.format === 'json') {
+      return Array.prototype.slice.call(canvasEl.querySelectorAll('[data-id="' + escaped + '"]')).slice(0, 1);
+    }
 
     return Array.prototype.slice.call(canvasEl.querySelectorAll(
       '[data-row-id="' + escaped + '"], [data-col-id="' + escaped + '"], [data-element-id="' + escaped + '"]'
@@ -394,7 +419,7 @@
   function importXML(xml) {
     isImporting = true;
 
-    var imported = config.callbacks ? new Promise(function(resolve) {
+    var imported = config.format === 'json' ? importSchema(xml) : config.callbacks ? new Promise(function(resolve) {
       viewer.importXML(xml, function(error, warnings) {
         resolve({ error: error, warnings: warnings || [] });
       });
@@ -415,8 +440,36 @@
     });
   }
 
-  /** The diagram as XML, by callback or promise as importXML. */
+  /**
+   * Reads a form-js schema (the file's JSON) into the form viewer or editor.
+   * A file that isn't JSON is an import error, like XML that doesn't parse.
+   */
+  function importSchema(text) {
+    var schema;
+
+    try {
+      schema = JSON.parse(text);
+    } catch (error) {
+      return Promise.resolve({ error: error, warnings: [] });
+    }
+
+    return Promise.resolve().then(function() {
+      return viewer.importSchema(schema);
+    }).then(function(result) {
+      return { error: null, warnings: (result && result.warnings) || [] };
+    }, function(error) {
+      return { error: error, warnings: error.warnings || [] };
+    });
+  }
+
+  /** The diagram as XML, by callback or promise as importXML; a form as its JSON schema. */
   function exportXML() {
+    if (config.format === 'json') {
+      return Promise.resolve().then(function() {
+        return JSON.stringify(viewer.saveSchema(), null, 2) + '\n';
+      });
+    }
+
     if (config.callbacks) {
       return new Promise(function(resolve, reject) {
         viewer.saveXML({ format: true }, function(error, xml) {
@@ -802,7 +855,7 @@
 
       viewer = new editor.Modeler(options);
     } else {
-      viewer = new window[config.viewer](options);
+      viewer = new window[config.viewer](Object.assign(options, config.viewerOptions));
     }
 
     attachedViewers = [];

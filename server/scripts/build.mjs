@@ -7,14 +7,16 @@
 //   model type (for CMMN: the cmmn-js viewer bundle, its styles, the Flowable
 //   descriptor; for BPMN, in vendor/bpmn: the flowable-bpmn-js viewer bundle
 //   and its styles; for DMN, in vendor/dmn: the dmn-js viewer bundle, its
-//   styles and the properties panel's)
+//   styles and the properties panel's; for forms, in vendor/form: the
+//   form-js viewer, editor and properties panel styles)
 // - public/build/<type>/: what edit mode loads for each model type, built
 //   separately so a page loads only its own type's (for CMMN: editor.js, the
 //   Modeler and the Flowable properties panel, bundled, and
 //   properties-panel.css, the panel's LESS styles, compiled; for BPMN:
 //   editor.js, the flowable-bpmn-js Modeler with its properties panel, lint
 //   and touch module; for DMN: editor.js, the dmn-js Modeler with the DMN
-//   properties panel)
+//   properties panel; for forms: viewer.js and editor.js, the form-js viewer
+//   and editor, which have no browser bundles)
 // - THIRD_PARTY_NOTICES.md: every package whose code or files the package
 //   carries
 //
@@ -40,7 +42,8 @@ const dmnJsDist = dirname(require.resolve('dmn-js/dist/dmn-navigated-viewer.prod
 /**
  * What each model type's page needs built: `vendor`, files copied into
  * public/vendor as they are, by name; `editor`, the client entry bundled into
- * public/build/<type>/editor.js; `styles`, CSS files written into
+ * public/build/<type>/editor.js; `viewer`, for a type whose viewer has no
+ * browser bundle, the entry bundled into public/build/<type>/viewer.js; `styles`, CSS files written into
  * public/build/<type>/, by name.
  */
 const TYPES = [
@@ -96,6 +99,18 @@ const TYPES = [
     },
     editor: join(root, 'client', 'dmn', 'editor.js'),
     styles: {}
+  },
+  {
+    id: 'form',
+    // form-js has no browser bundle: the viewer is bundled here too
+    vendor: {
+      'form/form-js.css': require.resolve('@bpmn-io/form-js-viewer/dist/assets/form-js.css'),
+      'form/form-js-editor.css': require.resolve('@bpmn-io/form-js-editor/dist/assets/form-js-editor.css'),
+      'form/properties-panel.css': require.resolve('@bpmn-io/form-js-editor/dist/assets/properties-panel.css')
+    },
+    viewer: join(root, 'client', 'form', 'viewer.js'),
+    editor: join(root, 'client', 'form', 'editor.js'),
+    styles: {}
   }
 ];
 
@@ -138,22 +153,26 @@ await rm(join(root, 'public', 'build'), { recursive: true, force: true });
 
 for (const type of TYPES) {
   const out = join(root, 'public', 'build', type.id);
-  const editor = await build({
-    entryPoints: [type.editor],
-    outfile: join(out, 'editor.js'),
-    bundle: true,
-    format: 'iife',
-    platform: 'browser',
-    target: ['es2020'],
-    minify: true,
-    legalComments: 'eof',
-    define: { 'process.env.NODE_ENV': '"production"' },
-    metafile: true,
-    absWorkingDir: root,
-    logLevel: 'warning'
-  });
+  const bundles = { editor: type.editor, ...(type.viewer ? { viewer: type.viewer } : {}) };
 
-  Object.assign(inputs, editor.metafile.inputs);
+  for (const [name, entry] of Object.entries(bundles)) {
+    const bundle = await build({
+      entryPoints: [entry],
+      outfile: join(out, `${name}.js`),
+      bundle: true,
+      format: 'iife',
+      platform: 'browser',
+      target: ['es2020'],
+      minify: true,
+      legalComments: 'eof',
+      define: { 'process.env.NODE_ENV': '"production"' },
+      metafile: true,
+      absWorkingDir: root,
+      logLevel: 'warning'
+    });
+
+    Object.assign(inputs, bundle.metafile.inputs);
+  }
 
   for (const [name, compile] of Object.entries(type.styles)) {
     await writeFile(join(out, name), await compile());

@@ -424,7 +424,7 @@ export class ViewServer {
       }
 
       return send(response, 200, xml, {
-        'Content-Type': 'application/xml; charset=utf-8',
+        'Content-Type': view.type.page.format === 'json' ? 'application/json; charset=utf-8' : 'application/xml; charset=utf-8',
         'Cache-Control': 'no-store',
         'X-Diagram-Version': versionOf(xml)
       });

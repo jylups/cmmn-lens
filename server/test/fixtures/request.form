@@ -1,0 +1,78 @@
+{
+  "components": [
+    {
+      "text": "# Leave request",
+      "type": "text",
+      "id": "Text_title",
+      "layout": { "row": "Row_title" }
+    },
+    {
+      "label": "Employee name",
+      "type": "textfield",
+      "id": "Field_name",
+      "key": "employeeName",
+      "validate": { "required": true, "maxLength": 80 },
+      "layout": { "row": "Row_name", "columns": 8 }
+    },
+    {
+      "label": "Leave type",
+      "type": "select",
+      "id": "Field_type",
+      "key": "leaveType",
+      "values": [
+        { "label": "Holiday", "value": "holiday" },
+        { "label": "Sick leave", "value": "sick" }
+      ],
+      "defaultValue": "holiday",
+      "layout": { "row": "Row_name", "columns": 4 }
+    },
+    {
+      "label": "Dates",
+      "type": "group",
+      "id": "Group_dates",
+      "path": "dates",
+      "showOutline": true,
+      "components": [
+        {
+          "label": "From",
+          "type": "datetime",
+          "id": "Field_from",
+          "key": "from",
+          "subtype": "date",
+          "dateLabel": "From",
+          "validate": { "required": true },
+          "layout": { "row": "Row_dates", "columns": 6 }
+        },
+        {
+          "label": "To",
+          "type": "datetime",
+          "id": "Field_to",
+          "key": "to",
+          "subtype": "date",
+          "dateLabel": "To",
+          "layout": { "row": "Row_dates", "columns": 6 }
+        }
+      ],
+      "layout": { "row": "Row_group" }
+    },
+    {
+      "label": "Doctor's note",
+      "type": "textarea",
+      "id": "Field_note",
+      "key": "note",
+      "conditional": { "hide": "=leaveType != \"sick\"" },
+      "layout": { "row": "Row_note" }
+    },
+    {
+      "action": "submit",
+      "label": "Submit",
+      "type": "button",
+      "id": "Button_submit",
+      "layout": { "row": "Row_submit" }
+    }
+  ],
+  "type": "default",
+  "id": "Form_leave",
+  "schemaVersion": 19,
+  "exporter": { "name": "form-js (https://demo.bpmn.io)", "version": "1.18.0" }
+}
