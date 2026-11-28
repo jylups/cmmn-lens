@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:flowable="http://flowable.org/bpmn"
+             xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+             xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+             xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+             id="Definitions_holiday"
+             targetNamespace="http://www.flowable.org/processdef">
+  <message id="Message_cancel" name="cancelRequest"/>
+  <process id="holidayRequest" name="Holiday request" isExecutable="true">
+    <documentation>An employee asks for days off and a manager decides.</documentation>
+    <startEvent id="Start_request" name="Request received" flowable:initiator="employee"/>
+    <sequenceFlow id="Flow_toApprove" sourceRef="Start_request" targetRef="Task_approve"/>
+    <userTask id="Task_approve" name="Approve or reject" flowable:candidateGroups="managers" flowable:formKey="approve-holiday" flowable:dueDate="P3D">
+      <extensionElements>
+        <flowable:taskListener event="create" class="org.example.NotifyManager"/>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="Flow_toDecision" sourceRef="Task_approve" targetRef="Gateway_decision"/>
+    <exclusiveGateway id="Gateway_decision" name="Approved?" default="Flow_rejected"/>
+    <sequenceFlow id="Flow_approved" name="yes" sourceRef="Gateway_decision" targetRef="Task_book">
+      <conditionExpression xsi:type="tFormalExpression">${approved}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="Flow_rejected" name="no" sourceRef="Gateway_decision" targetRef="End_rejected"/>
+    <serviceTask id="Task_book" name="Book the days" flowable:class="org.example.BookHoliday"/>
+    <sequenceFlow id="Flow_toEnd" sourceRef="Task_book" targetRef="End_approved"/>
+    <boundaryEvent id="Boundary_cancel" name="Cancelled" attachedToRef="Task_approve">
+      <messageEventDefinition id="Definition_cancel" messageRef="Message_cancel"/>
+    </boundaryEvent>
+    <sequenceFlow id="Flow_cancelled" sourceRef="Boundary_cancel" targetRef="End_rejected"/>
+    <endEvent id="End_approved" name="Booked"/>
+    <endEvent id="End_rejected" name="Not booked"/>
+  </process>
+  <bpmndi:BPMNDiagram id="Diagram_holiday">
+    <bpmndi:BPMNPlane id="Plane_holiday" bpmnElement="holidayRequest">
+      <bpmndi:BPMNShape id="Start_request_di" bpmnElement="Start_request">
+        <dc:Bounds x="100" y="142" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_approve_di" bpmnElement="Task_approve">
+        <dc:Bounds x="190" y="120" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_decision_di" bpmnElement="Gateway_decision" isMarkerVisible="true">
+        <dc:Bounds x="345" y="135" width="50" height="50"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_book_di" bpmnElement="Task_book">
+        <dc:Bounds x="450" y="120" width="100" height="80"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_approved_di" bpmnElement="End_approved">
+        <dc:Bounds x="612" y="142" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_rejected_di" bpmnElement="End_rejected">
+        <dc:Bounds x="352" y="282" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Boundary_cancel_di" bpmnElement="Boundary_cancel">
+        <dc:Bounds x="222" y="182" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_toApprove_di" bpmnElement="Flow_toApprove">
+        <di:waypoint x="136" y="160"/>
+        <di:waypoint x="190" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toDecision_di" bpmnElement="Flow_toDecision">
+        <di:waypoint x="290" y="160"/>
+        <di:waypoint x="345" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_approved_di" bpmnElement="Flow_approved">
+        <di:waypoint x="395" y="160"/>
+        <di:waypoint x="450" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_rejected_di" bpmnElement="Flow_rejected">
+        <di:waypoint x="370" y="185"/>
+        <di:waypoint x="370" y="282"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_toEnd_di" bpmnElement="Flow_toEnd">
+        <di:waypoint x="550" y="160"/>
+        <di:waypoint x="612" y="160"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_cancelled_di" bpmnElement="Flow_cancelled">
+        <di:waypoint x="240" y="218"/>
+        <di:waypoint x="240" y="300"/>
+        <di:waypoint x="352" y="300"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
