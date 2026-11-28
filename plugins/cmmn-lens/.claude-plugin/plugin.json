@@ -1,7 +1,7 @@
 {
   "name": "cmmn-lens",
   "version": "0.1.6",
-  "description": "Shows the local Flowable CMMN file Claude is editing in an interactive viewer beside the chat, and tells Claude what you select.",
+  "description": "Shows the local Flowable CMMN or BPMN file Claude is editing in an interactive viewer beside the chat, and tells Claude what you select.",
   "author": {
     "name": "jylups",
     "url": "https://github.com/jylups"
@@ -11,6 +11,7 @@
   "license": "MIT",
   "keywords": [
     "cmmn",
+    "bpmn",
     "flowable",
     "case-management",
     "diagram",

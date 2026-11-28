@@ -1,6 +1,7 @@
 /**
  * The read-only properties panel: shows the selected elements as the server
- * describes them from the file (server/src/selection.js). Every value is set
+ * describes them from the file (server/src/selection.js for CMMN,
+ * server/src/types/bpmn/index.js for BPMN). Every value is set
  * as text, never parsed as HTML.
  */
 (function() {
@@ -106,6 +107,49 @@
     }));
   }
 
+  function nameAndId(ref) {
+    return ref && (ref.name ? ref.name + ' (' + ref.id + ')' : ref.id);
+  }
+
+  /** A BPMN node's flows in or out, one line each: the flow, the node at its other end, its condition. */
+  function flowsSection(title, flows, end) {
+    if (!flows || !flows.length) {
+      return null;
+    }
+
+    var list = el('ul', 'properties-list');
+
+    flows.forEach(function(flow) {
+      var other = flow[end];
+      var text = flow.id + (other ? (end === 'from' ? ' from ' : ' to ') + nameAndId(other) : '');
+
+      list.appendChild(el('li', '', text + (flow.isDefault ? ' (default)' : '')));
+
+      if (flow.condition) {
+        list.appendChild(el('li', 'is-code properties-condition', 'if ' + flow.condition));
+      }
+    });
+
+    return section(title, [list]);
+  }
+
+  /** A BPMN event's definitions: message, timer, signal and the rest, with what they refer to. */
+  function eventDefinitionsSection(definitions) {
+    if (!definitions || !definitions.length) {
+      return null;
+    }
+
+    return section(definitions.length === 1 ? 'Event definition' : 'Event definitions', definitions.map(function(definition) {
+      return rows([
+        ['Type', typeLabel(definition.type)],
+        ['Date', definition.timeDate, true],
+        ['Duration', definition.timeDuration, true],
+        ['Cycle', definition.timeCycle, true],
+        ['Condition', definition.condition, true]
+      ].concat(attributeRows(definition.attributes)));
+    }));
+  }
+
   function describeElement(element) {
     var node = el('article', 'properties-element');
 
@@ -122,13 +166,21 @@
     node.appendChild(el('div', 'properties-type', type));
     node.appendChild(el('div', 'properties-name', name || element.id));
 
+    var container = element.stage || element.container;
+
     [
       rows([
         ['Id', element.id, true],
         ['Line', element.line],
-        ['In', element.stage && (element.stage.name || element.stage.id)],
+        ['In', container && (container.name || container.id)],
+        ['Lane', element.lane && (element.lane.name || element.lane.id)],
         ['Of', element.planItem && (element.planItem.name || element.planItem.id)],
-        ['Source', element.source && onPartText(element)]
+        ['Source', element.source && onPartText(element)],
+        ['From', nameAndId(element.from)],
+        ['To', nameAndId(element.to)],
+        ['Condition', element.condition, true],
+        ['Default flow', element.isDefault ? 'Yes' : undefined],
+        ['Documentation', element.documentation]
       ].concat(attributeRows(element.attributes))),
       definition && section(typeLabel(definition.type), [
         rows([['Id', definition.id, true]].concat(attributeRows(definition.attributes))),
@@ -137,7 +189,10 @@
       element.extensionElements && rows([['Extensions', element.extensionElements.join(', ')]]),
       criteriaSection('Entry criteria', element.entryCriteria),
       criteriaSection('Exit criteria', element.exitCriteria),
-      element.sentry && section('Sentry', [sentryList(element.sentry)])
+      element.sentry && section('Sentry', [sentryList(element.sentry)]),
+      flowsSection('Incoming flows', element.incoming, 'from'),
+      flowsSection('Outgoing flows', element.outgoing, 'to'),
+      eventDefinitionsSection(element.eventDefinitions)
     ].forEach(function(child) {
       if (child) {
         node.appendChild(child);
@@ -171,7 +226,9 @@
         }
 
         if (result.error) {
-          replace([el('p', 'properties-note', 'The file can\'t be read as CMMN right now: ' + result.error)], 'Properties');
+          var label = (document.body.dataset.modelType || 'the model').toUpperCase();
+
+          replace([el('p', 'properties-note', 'The file can\'t be read as ' + label + ' right now: ' + result.error)], 'Properties');
 
           return;
         }

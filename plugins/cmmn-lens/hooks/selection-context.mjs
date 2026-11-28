@@ -110,7 +110,7 @@ function describe(selection, file) {
   const opening = `The user has selected in the cmmn-lens viewer of ${file}`;
 
   if (selection.error) {
-    return `${opening} the elements ${selection.ids.join(', ')} (the file can't be read as CMMN right now: ${selection.error}). ` +
+    return `${opening} the elements ${selection.ids.join(', ')} (the file can't be read right now: ${selection.error}). ` +
       'Use this when the prompt refers to "this" or "the selected" element; it may not relate to the prompt.';
   }
 

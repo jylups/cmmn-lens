@@ -208,6 +208,13 @@ body {
   padding-left: 16px;
 }
 
+/* a flow's condition, under the flow */
+.properties-condition {
+  list-style: none;
+  margin-left: -4px;
+  color: #4b5563;
+}
+
 .properties-criterion + .properties-criterion {
   margin-top: 6px;
 }
