@@ -4,6 +4,11 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
+## Unreleased
+
+- The server reads files through model types, so BPMN, DMN and forms can be added one module each. CMMN is the only type so far and works as before. An `.xml` file opens when its root element is in a model type's namespace (a CMMN `.xml` file as before); other `.xml` files are refused with a message instead of failing to parse
+- `open_view` and `validate` report the file's model type (`type: "cmmn"`), and the tool descriptions name the model types and the files each accepts
+
 ## 0.1.6 (2026-11-27)
 
 - Edit mode takes `@jylups/cmmn-js` 0.26.1 and its context pad tools, as in Flowable Design: Copy, Cut and Paste beside the selected element (Paste on the case plan and stages while something is copied), the tools on the left and the shapes to add on the right, tasks and milestones resizable from their corners, a button that collapses the palette, and Help, which opens Flowable's CMMN reference page for the element in a new browser tab. Their styles load only in edit mode

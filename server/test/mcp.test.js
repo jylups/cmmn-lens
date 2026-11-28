@@ -38,7 +38,8 @@ test('open_view returns a working URL, and the web server stops with the MCP ser
     const result = await client.callTool({ name: 'open_view', arguments: { path: 'claim.cmmn' } });
 
     assert.equal(result.isError, undefined);
-    assert.match(result.content[0].text, /^Viewer for claim\.cmmn: http:\/\/127\.0\.0\.1:/);
+    assert.match(result.content[0].text, /^CMMN viewer for claim\.cmmn: http:\/\/127\.0\.0\.1:/);
+    assert.equal(result.structuredContent.type, 'cmmn');
 
     url = result.structuredContent.url;
 

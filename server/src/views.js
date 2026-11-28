@@ -5,12 +5,9 @@ import { chmod, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { describeChanges, diffModels, isEmpty } from './changes.js';
 import { FileFollower, versionOf } from './follow.js';
-import { resolveDrawnIds } from './highlight.js';
-import { resolveCmmnFile } from './paths.js';
+import { resolveModelFile } from './paths.js';
 import { register, unregister } from './registry.js';
-import { describeSelection } from './selection.js';
 import { renderPage } from './page.js';
 
 // public/ sits next to src/ in the repository and next to dist/ in the package
@@ -105,10 +102,11 @@ export class ViewServer {
    * Opens a view of a file, or returns the view already open for it.
    *
    * @param {string} path absolute, or relative to `baseDir`
-   * @returns {Promise<{ url: string, path: string, isReused: boolean }>}
+   * @returns {Promise<{ url: string, path: string, type: string, isReused: boolean }>}
+   *   `type` is the model type's id, `cmmn`
    */
   async open(path) {
-    const realPath = await resolveCmmnFile(this.baseDir, path);
+    const { path: realPath, type } = await resolveModelFile(this.baseDir, path);
 
     await this.start();
 
@@ -120,6 +118,7 @@ export class ViewServer {
         id: randomBytes(6).toString('hex'),
         path: realPath,
         name: basename(realPath),
+        type,
         clients: new Set(),
         selection: { ids: [], at: 0 },
         highlight: null,
@@ -134,7 +133,7 @@ export class ViewServer {
 
     view.touched = Date.now();
 
-    return { url: this.viewUrl(view), path: realPath, isReused };
+    return { url: this.viewUrl(view), path: realPath, type: view.type.id, isReused };
   }
 
   /**
@@ -144,7 +143,7 @@ export class ViewServer {
    */
   async pickView(path) {
     if (path) {
-      return this.viewsByPath.get(await resolveCmmnFile(this.baseDir, path)) ?? null;
+      return this.viewsByPath.get((await resolveModelFile(this.baseDir, path)).path) ?? null;
     }
 
     let view = null;
@@ -176,7 +175,7 @@ export class ViewServer {
     }
 
     const xml = await readFile(view.path, 'utf8');
-    const resolved = ids.length ? await resolveDrawnIds(xml, ids) : { drawn: [], unknown: [], undrawn: [] };
+    const resolved = ids.length ? await view.type.resolveDrawnIds(xml, ids) : { drawn: [], unknown: [], undrawn: [] };
 
     view.highlight = { ids: resolved.drawn, version: versionOf(xml) };
 
@@ -200,7 +199,7 @@ export class ViewServer {
     let view;
 
     if (path) {
-      view = this.viewsByPath.get(await resolveCmmnFile(this.baseDir, path));
+      view = this.viewsByPath.get((await resolveModelFile(this.baseDir, path)).path);
     } else {
       for (const candidate of this.viewsById.values()) {
         if (!view || candidate.selection.at > view.selection.at) {
@@ -218,7 +217,7 @@ export class ViewServer {
    *
    * @param {string} [path]
    * @returns {Promise<null | { path: string, name: string, ids: string[], elements?: object[], error?: string }>}
-   *   `error` when the file can't be read as CMMN right now
+   *   `error` when the file can't be read as its model type right now
    */
   async selectionDetails(path) {
     const selection = await this.selection(path);
@@ -228,7 +227,10 @@ export class ViewServer {
     }
 
     try {
-      return { ...selection, elements: await describeSelection(await readFile(selection.path, 'utf8'), selection.ids) };
+      const { type } = this.viewsByPath.get(selection.path);
+      const xml = await readFile(selection.path, 'utf8');
+
+      return { ...selection, elements: await type.describeSelection(xml, selection.ids) };
     } catch (error) {
       return { ...selection, error: error.message.split('\n')[0] };
     }
@@ -522,9 +524,9 @@ export class ViewServer {
   /** Keeps what a save from the page changed, until the agent has seen it. */
   async recordUserChange(view, before, after) {
     try {
-      const changes = await diffModels(before, after);
+      const changes = await view.type.diff(before, after);
 
-      if (!isEmpty(changes)) {
+      if (!view.type.isEmpty(changes)) {
         view.userChanges.push({ at: Date.now(), changes });
       }
     } catch (error) {
@@ -545,7 +547,7 @@ export class ViewServer {
 
     for (const view of views) {
       for (const change of view.userChanges) {
-        taken.push({ path: view.path, name: view.name, at: change.at, text: describeChanges(change.changes) });
+        taken.push({ path: view.path, name: view.name, at: change.at, text: view.type.describeChanges(change.changes) });
       }
 
       view.userChanges = [];
@@ -577,14 +579,14 @@ export class ViewServer {
   /**
    * Describes elements of a view's file for the page's properties panel:
    * `?ids=a,b` (ids are XML names, which have no commas). Answers
-   * `{ elements }`, or `{ error }` when the file can't be read as CMMN.
+   * `{ elements }`, or `{ error }` when the file can't be read as its model type.
    */
   async describe(response, view, idsParam) {
     const ids = (idsParam ?? '').split(',').filter(Boolean).slice(0, 100);
     let body;
 
     try {
-      body = { elements: await describeSelection(await readFile(view.path, 'utf8'), ids) };
+      body = { elements: await view.type.describeSelection(await readFile(view.path, 'utf8'), ids) };
     } catch (error) {
       body = { error: error.message.split('\n')[0] };
     }

@@ -1,13 +1,19 @@
+import { readFile } from 'node:fs/promises';
 import { relative } from 'node:path';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { CMMN_EXTENSIONS, resolveCmmnFile } from './paths.js';
+import { resolveModelFile } from './paths.js';
 import serverPackage from '../package.json' with { type: 'json' };
-import { validateFile } from './validate.js';
+import { MODEL_TYPES, describeAccepted, modelType, typeLabels } from './types/index.js';
 
 const { version } = serverPackage;
+
+/** The model types, for the tool descriptions: `CMMN (.cmmn, or .xml with a CMMN root element)`. */
+const ACCEPTED = `Model types: ${describeAccepted()}.`;
+const LABELS = typeLabels();
+const TYPE_IDS = /** @type {[string, ...string[]]} */ (MODEL_TYPES.map(type => type.id));
 
 /**
  * The MCP server and its tools, backed by a ViewServer.
@@ -19,22 +25,22 @@ export function createMcpServer(views) {
   const server = new McpServer({ name: 'cmmn-lens', version });
 
   server.registerTool('open_view', {
-    title: 'Open a CMMN viewer',
+    title: `Open a ${LABELS} viewer`,
     description:
-      'Opens an interactive viewer for a local CMMN file and returns its URL on localhost. ' +
-      'Show the URL in a browser pane or a browser to see the diagram. ' +
-      'Calling it again for the same file returns the same URL. ' +
-      `Accepts ${CMMN_EXTENSIONS.join(' and ')} files.`,
+      'Opens an interactive viewer for a local model file and returns its URL on localhost, with the file\'s ' +
+      'model type. Show the URL in a browser pane or a browser to see the diagram. ' +
+      'Calling it again for the same file returns the same URL. ' + ACCEPTED,
     inputSchema: {
-      path: z.string().min(1).describe('Path of the CMMN file, absolute or relative to the working directory')
+      path: z.string().min(1).describe('Path of the model file, absolute or relative to the working directory')
     },
     outputSchema: {
       url: z.string().describe('The viewer page for the file'),
       path: z.string().describe('The file\'s full path'),
+      type: z.enum(TYPE_IDS).describe('The file\'s model type'),
       isReused: z.boolean().describe('Whether a view of this file was already open')
     },
     annotations: {
-      title: 'Open a CMMN viewer',
+      title: `Open a ${LABELS} viewer`,
       destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
@@ -45,7 +51,7 @@ export function createMcpServer(views) {
       const shown = relative(views.baseDir, view.path) || view.path;
 
       return {
-        content: [{ type: 'text', text: `Viewer for ${shown}: ${view.url}` }],
+        content: [{ type: 'text', text: `${modelType(view.type)?.label ?? view.type} viewer for ${shown}: ${view.url}` }],
         structuredContent: view
       };
     } catch (error) {
@@ -67,60 +73,62 @@ export function createMcpServer(views) {
   });
 
   server.registerTool('validate', {
-    title: 'Validate a CMMN file',
+    title: `Validate a ${LABELS} file`,
     description:
-      'Checks a local CMMN file the way the viewer reads it, with the CMMN and Flowable descriptors, and lists ' +
-      'the problems with their element ids and lines: XML that doesn\'t parse, duplicate ids, references to ' +
-      'elements that don\'t exist, attributes nobody reads, and elements with no shape in the diagram. ' +
-      'Run it after each edit of a CMMN file and fix the errors. ' +
-      `Accepts ${CMMN_EXTENSIONS.join(' and ')} files.`,
+      'Checks a local model file the way the viewer reads it, with its model type\'s descriptors and the Flowable ' +
+      'ones, and lists the problems with their element ids and lines: XML that doesn\'t parse, duplicate ids, ' +
+      'references to elements that don\'t exist, attributes nobody reads, and elements with no shape in the diagram. ' +
+      'Run it after each edit of a model file and fix the errors. ' + ACCEPTED,
     inputSchema: {
-      path: z.string().min(1).describe('Path of the CMMN file, absolute or relative to the working directory')
+      path: z.string().min(1).describe('Path of the model file, absolute or relative to the working directory')
     },
     outputSchema: {
       path: z.string().describe('The file\'s full path'),
+      type: z.enum(TYPE_IDS).describe('The file\'s model type'),
       isValid: z.boolean().describe('Whether the file has no errors (it may still have warnings)'),
       errorCount: z.number(),
       warningCount: z.number(),
       problems: z.array(problemSchema)
     },
     annotations: {
-      title: 'Validate a CMMN file',
+      title: `Validate a ${LABELS} file`,
       destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
     }
   }, async ({ path }) => {
     let file;
+    let xml;
 
     try {
-      file = await resolveCmmnFile(views.baseDir, path);
+      file = await resolveModelFile(views.baseDir, path);
+      xml = await readFile(file.path, 'utf8');
     } catch (error) {
       return { content: [{ type: 'text', text: error.message }], isError: true };
     }
 
-    const result = await validateFile(file);
-    const shown = relative(views.baseDir, file) || file;
+    const result = await file.type.validate(xml);
+    const shown = relative(views.baseDir, file.path) || file.path;
 
     return {
       content: [{ type: 'text', text: formatValidation(shown, result) }],
-      structuredContent: { path: file, ...result }
+      structuredContent: { path: file.path, type: file.type.id, ...result }
     };
   });
 
   server.registerTool('get_selection', {
-    title: 'Get the selection in a CMMN viewer',
+    title: `Get the selection in a ${LABELS} viewer`,
     description:
       'Returns the elements the user has selected in a cmmn-lens viewer, described from the file as it is now: ' +
-      'id, type, name, the attributes set (Flowable ones included), the task or other item a plan item stands for, ' +
-      'its entry and exit criteria with their sentries, and the stage it is in. ' +
+      'id, type, name and the attributes set (Flowable ones included); in CMMN also the task or other item a plan ' +
+      'item stands for, its entry and exit criteria with their sentries, and the stage it is in. ' +
       'Call it when the user refers to "this", "the selected task" or "what I selected". ' +
-      'Without a path, it reads the viewer whose selection changed last.',
+      'Without a path, it reads the viewer whose selection changed last. ' + ACCEPTED,
     inputSchema: {
-      path: z.string().min(1).optional().describe('The CMMN file whose viewer to read; the last one used if left out')
+      path: z.string().min(1).optional().describe('The model file whose viewer to read; the last one used if left out')
     },
     annotations: {
-      title: 'Get the selection in a CMMN viewer',
+      title: `Get the selection in a ${LABELS} viewer`,
       destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
@@ -138,19 +146,21 @@ export function createMcpServer(views) {
   });
 
   server.registerTool('highlight', {
-    title: 'Highlight elements in a CMMN viewer',
+    title: `Highlight elements in a ${LABELS} viewer`,
     description:
       'Marks elements in a cmmn-lens viewer and scrolls them into view, until the file changes again. ' +
       'Use it after an edit to show the user what you changed, or to point at elements you are talking about. ' +
-      'Takes element ids: plan items, criteria, on parts and the case plan model are marked themselves; a task, ' +
-      'stage, milestone or other plan item definition is marked through the plan items that use it, a sentry through ' +
-      'its criteria. An empty list clears the marks. Without a path, it uses the viewer last opened or selected in.',
+      'Takes element ids; an element the diagram doesn\'t draw is marked through the shapes that stand for it. ' +
+      'In CMMN, plan items, criteria, on parts and the case plan model are marked themselves; a task, stage, ' +
+      'milestone or other plan item definition is marked through the plan items that use it, a sentry through ' +
+      'its criteria. An empty list clears the marks. Without a path, it uses the viewer last opened or selected in. ' +
+      ACCEPTED,
     inputSchema: {
       ids: z.array(z.string().min(1)).describe('The ids of the elements to mark'),
-      path: z.string().min(1).optional().describe('The CMMN file whose viewer to use; the last one used if left out')
+      path: z.string().min(1).optional().describe('The model file whose viewer to use; the last one used if left out')
     },
     annotations: {
-      title: 'Highlight elements in a CMMN viewer',
+      title: `Highlight elements in a ${LABELS} viewer`,
       destructiveHint: false,
       readOnlyHint: true,
       openWorldHint: false
@@ -168,17 +178,17 @@ export function createMcpServer(views) {
   });
 
   server.registerTool('get_changes', {
-    title: 'Get the changes the user saved in a CMMN viewer',
+    title: `Get the changes the user saved in a ${LABELS} viewer`,
     description:
       'Returns what the user changed and saved in a cmmn-lens viewer since you last looked: elements added, ' +
       'removed and changed (names, attributes, events, moves between stages), and how many shapes they moved. ' +
       'Each change is returned once. Call it when the user says they changed the model in the viewer. ' +
-      'Without a path, it reads every open viewer.',
+      'Without a path, it reads every open viewer. ' + ACCEPTED,
     inputSchema: {
-      path: z.string().min(1).optional().describe('The CMMN file whose viewer to read; every viewer if left out')
+      path: z.string().min(1).optional().describe('The model file whose viewer to read; every viewer if left out')
     },
     annotations: {
-      title: 'Get the changes the user saved in a CMMN viewer',
+      title: `Get the changes the user saved in a ${LABELS} viewer`,
       destructiveHint: false,
       readOnlyHint: false,
       openWorldHint: false
@@ -282,7 +292,7 @@ export function formatSelection(selection, baseDir, path) {
   }
 
   if (selection.error) {
-    return `${shown} can't be read as CMMN right now (${selection.error}). The selected ids are: ${selection.ids.join(', ')}.`;
+    return `${shown} can't be read as ${LABELS} right now (${selection.error}). The selected ids are: ${selection.ids.join(', ')}.`;
   }
 
   const summary = selection.elements.map(element => {
