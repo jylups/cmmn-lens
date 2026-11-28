@@ -1,4 +1,4 @@
-// The editor bundle (scripts/build.mjs builds it into public/build/editor.js):
+// The CMMN editor bundle (scripts/build.mjs builds it into public/build/cmmn/editor.js):
 // the cmmn-js Modeler, the Flowable properties panel, the touch module and
 // the context pad tools, which are CommonJS and have no browser bundle of their own. The page loads it when the user
 // switches to edit mode.
@@ -19,6 +19,14 @@ import contextPadHelpModule from '@jylups/cmmn-js/lib/features/context-pad-help'
 
 window.CmmnLensEditor = {
   Modeler,
+  // the page's elements the editor needs: the canvas and the panel's place
+  options: ({ canvas, properties }) => ({
+    propertiesPanel: { parent: properties },
+    // keep the context pad within the canvas, left of the properties panel
+    contextPadPosition: {
+      visibleRight: () => canvas.getBoundingClientRect().right
+    }
+  }),
   modules: [
     propertiesPanelModule,
     flowablePropertiesProviderModule,

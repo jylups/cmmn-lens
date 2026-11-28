@@ -10,20 +10,27 @@
  * @param {string} options.selectionUrl where the page posts the user's selection
  * @param {string} options.describeUrl where the page gets the selected elements' properties
  * @param {string} options.saveUrl where the page saves the model in edit mode
+ * @param {import('./types/index.js').ModelType} options.type the file's model
+ *   type, whose viewer, styles and editor the page loads
  * @returns {string}
  */
-export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, describeUrl, saveUrl }) {
+export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, describeUrl, saveUrl, type }) {
+  const { styles, scripts, viewer, callbacks, moddleExtensions, editor } = type.page;
   const config = jsonForScript({
     name,
+    type: type.id,
     diagramUrl,
     eventsUrl,
     selectionUrl,
     describeUrl,
     saveUrl,
-    flowableUrl: '/assets/flowable.json',
-    editorScriptUrl: '/assets/build/editor.js',
-    editorStyleUrls: ['/assets/build/properties-panel.css', '/assets/cmmn-js-flowable-tools.css']
+    viewer,
+    callbacks,
+    moddleExtensions,
+    editor: editor ?? null
   });
+  const styleLinks = styles.map(href => `  <link rel="stylesheet" href="${escapeHtml(href)}">\n`).join('');
+  const viewerScripts = scripts.map(src => `  <script src="${escapeHtml(src)}"></script>\n`).join('');
 
   return `<!doctype html>
 <html lang="en">
@@ -32,13 +39,9 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <title>${escapeHtml(name)} · cmmn-lens</title>
-  <link rel="stylesheet" href="/assets/diagram-js.css">
-  <link rel="stylesheet" href="/assets/cmmn-embedded.css">
-  <link rel="stylesheet" href="/assets/cmmn-js-flowable.css">
-  <link rel="stylesheet" href="/assets/cmmn-js-touch.css">
-  <link rel="stylesheet" href="/assets/viewer.css">
+${styleLinks}  <link rel="stylesheet" href="/assets/viewer.css">
 </head>
-<body>
+<body data-model-type="${escapeHtml(type.id)}">
   <header class="bar">
     <span class="file" title="${escapeHtml(path)}">${escapeHtml(name)}</span>
     <span class="status" id="status" role="status">Opening…</span>
@@ -71,8 +74,7 @@ export function renderPage({ name, path, diagramUrl, eventsUrl, selectionUrl, de
     </aside>
   </div>
   <script id="cmmn-lens-config" type="application/json">${config}</script>
-  <script src="/assets/cmmn-navigated-viewer.js"></script>
-  <script src="/assets/properties.js"></script>
+${viewerScripts}  <script src="/assets/properties.js"></script>
   <script src="/assets/viewer.js"></script>
 </body>
 </html>

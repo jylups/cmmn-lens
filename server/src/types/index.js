@@ -37,6 +37,28 @@ import cmmn from './cmmn.js';
  * @property {(changes: object) => string} describeChanges a diff as lines of text for the agent
  * @property {(xml: string, ids: string[]) => Promise<HighlightIds>} resolveDrawnIds
  *   maps ids the agent points at to the ids the viewer draws
+ * @property {PageSetup} page what the viewer page loads for this type
+ * @property {Record<string, string>} assets the files the page loads, by their
+ *   URL path (`/assets/…`), each a path under public/
+ */
+
+/**
+ * What the viewer page loads for a model type. The page's following,
+ * selection, highlight, properties, save and conflict handling are shared;
+ * this is the part that differs.
+ *
+ * @typedef {object} PageSetup
+ * @property {string[]} styles stylesheets of the viewer, loaded with the page
+ * @property {string[]} scripts scripts of the viewer, loaded with the page
+ * @property {string} viewer the global the viewer scripts define: a viewer
+ *   class built on diagram-js, with importXML, saveXML and get(service)
+ * @property {boolean} callbacks importXML and saveXML take callbacks (cmmn-js);
+ *   false when they return promises (bpmn-js, dmn-js)
+ * @property {Record<string, string>} moddleExtensions descriptors the page
+ *   fetches and passes to the viewer, by name
+ * @property {{ script: string, styles: string[], global: string }} [editor]
+ *   the editor bundle, loaded on Edit: its global is `{ Modeler, modules,
+ *   options?({ canvas, properties }) }`; without it the page has no Edit button
  */
 
 /** @type {ModelType[]} */

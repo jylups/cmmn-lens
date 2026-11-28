@@ -38,7 +38,7 @@ test('the built server runs with no dependencies installed, as the published pac
       const view = await client.callTool({ name: 'open_view', arguments: { path: 'claim.cmmn' } });
       const url = view.structuredContent.url;
 
-      for (const path of ['/assets/cmmn-navigated-viewer.js', '/assets/flowable.json', '/assets/cmmn-js-touch.css', '/assets/cmmn-js-flowable-tools.css', '/assets/build/editor.js']) {
+      for (const path of ['/assets/cmmn-navigated-viewer.js', '/assets/flowable.json', '/assets/cmmn-js-touch.css', '/assets/cmmn-js-flowable-tools.css', '/assets/build/cmmn/editor.js', '/assets/build/cmmn/properties-panel.css']) {
         assert.equal((await fetch(new URL(path, url))).status, 200, path);
       }
 
