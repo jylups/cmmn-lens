@@ -1,6 +1,6 @@
 {
   "name": "cmmn-lens",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Shows the local Flowable CMMN, BPMN or DMN file, or form-js form, Claude is editing in an interactive viewer beside the chat, and tells Claude what you select.",
   "author": {
     "name": "jylups",
