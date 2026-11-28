@@ -13,6 +13,9 @@ import { attributesOf, typeOf as cmmnTypeOf } from './selection.js';
  *   of what an element sits in (in CMMN its stage), reported as `stage`
  * @property {(element: object) => Record<string, unknown>} attributesOf the
  *   attributes compared
+ * @property {(element: object) => string|undefined} [containerKeyOf] what tells
+ *   whether an element moved to another container (an id, so renaming the
+ *   container doesn't move what is in it); `containerOf` when left out
  */
 
 /** @type {DiffDialect} */
@@ -195,10 +198,10 @@ function compare(old, element, dialect) {
     differences.event = [old.standardEvent, element.standardEvent];
   }
 
-  const [stageBefore, stageAfter] = [dialect.containerOf(old), dialect.containerOf(element)];
+  const keyOf = dialect.containerKeyOf ?? dialect.containerOf;
 
-  if (stageBefore !== stageAfter) {
-    differences.stage = [stageBefore, stageAfter];
+  if (keyOf(old) !== keyOf(element)) {
+    differences.stage = [dialect.containerOf(old), dialect.containerOf(element)];
   }
 
   const before = dialect.attributesOf(old);

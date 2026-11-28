@@ -1,5 +1,9 @@
 import bpmn from './bpmn/index.js';
 import cmmn from './cmmn.js';
+import dmn from './dmn/index.js';
+import { rootNamespace } from './namespace.js';
+
+export { rootNamespace };
 
 /**
  * @typedef {object} ValidationResult
@@ -63,7 +67,7 @@ import cmmn from './cmmn.js';
  */
 
 /** @type {ModelType[]} */
-export const MODEL_TYPES = [cmmn, bpmn];
+export const MODEL_TYPES = [cmmn, bpmn, dmn];
 
 /** The model type with an id, if there is one. */
 export function modelType(id) {
@@ -104,37 +108,6 @@ export function typeByContent(xml, types = MODEL_TYPES) {
   const namespace = rootNamespace(xml);
 
   return namespace ? types.find(type => type.namespaces.includes(namespace)) ?? null : null;
-}
-
-/**
- * The namespace of the root element of XML, `<definitions xmlns="…">` or
- * `<cmmn:definitions xmlns:cmmn="…">`; null when there is none to find.
- *
- * @param {string} xml the document, or enough of its start to hold the root tag
- * @returns {string|null}
- */
-export function rootNamespace(xml) {
-  const body = xml
-    .replace(/^\uFEFF/, '')
-    .replace(/<\?[\s\S]*?\?>/g, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<!DOCTYPE[^>[]*(\[[\s\S]*?\])?\s*>/i, '');
-  const tag = /<(?:([A-Za-z_][\w.-]*):)?[A-Za-z_][\w.-]*((?:\s+[^\s=>/]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*\/?>/.exec(body);
-
-  if (!tag) {
-    return null;
-  }
-
-  const [, prefix, attributes] = tag;
-  const name = prefix ? `xmlns:${prefix}` : 'xmlns';
-
-  for (const match of attributes.matchAll(/([^\s=]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
-    if (match[1] === name) {
-      return match[2] ?? match[3];
-    }
-  }
-
-  return null;
 }
 
 /**

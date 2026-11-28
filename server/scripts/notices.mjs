@@ -13,7 +13,7 @@ const require = createRequire(import.meta.url);
 /** Packages whose files are copied into public/vendor as they are (scripts/build.mjs). */
 // bpmn-font: the BPMN font, embedded in flowable-bpmn-js' copy of bpmn-embedded.css; it is a
 // dev dependency of the server only so its license is listed
-const SERVED = ['@jylups/cmmn-js', 'flowable-cmmn-moddle', 'cmmn-font', '@jylups/flowable-bpmn-js', 'bpmn-font'];
+const SERVED = ['@jylups/cmmn-js', 'flowable-cmmn-moddle', 'cmmn-font', '@jylups/flowable-bpmn-js', 'bpmn-font', 'dmn-js', 'dmn-js-properties-panel', 'dmn-font'];
 
 /** The package folder a file in node_modules belongs to: the innermost `node_modules/<name>`. */
 function packageDirOf(file) {

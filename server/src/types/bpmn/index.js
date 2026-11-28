@@ -52,7 +52,8 @@ const diffing = {
     const container = containerOf(element);
 
     return container ? container.name ?? container.id : undefined;
-  }
+  },
+  containerKeyOf: element => containerOf(element)?.id
 };
 
 /**

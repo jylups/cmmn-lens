@@ -27,8 +27,8 @@ const sketch = {
 };
 
 describe('model types', () => {
-  test('CMMN and BPMN are the model types every function of the server goes through', () => {
-    assert.deepEqual(MODEL_TYPES.map(type => type.id), ['cmmn', 'bpmn']);
+  test('CMMN, BPMN and DMN are the model types every function of the server goes through', () => {
+    assert.deepEqual(MODEL_TYPES.map(type => type.id), ['cmmn', 'bpmn', 'dmn']);
     assert.equal(modelType('cmmn').label, 'CMMN');
     assert.deepEqual(modelType('cmmn').namespaces, [CMMN_NS]);
     assert.deepEqual(modelType('bpmn').namespaces, ['http://www.omg.org/spec/BPMN/20100524/MODEL']);
@@ -42,7 +42,7 @@ describe('model types', () => {
       assert.ok(type.page.scripts.every(src => type.assets[src]), `${type.id} serves its viewer scripts`);
     }
 
-    assert.equal(modelType('dmn'), null);
+    assert.equal(modelType('form'), null);
   });
 
   test('a file name gives its type, the longest ending winning', () => {
@@ -53,7 +53,8 @@ describe('model types', () => {
     assert.equal(typeByName('claim.xml'), null);
     assert.equal(typeByName('holiday.bpmn').id, 'bpmn');
     assert.equal(typeByName('holiday.BPMN20.xml').id, 'bpmn');
-    assert.equal(typeByName('rules.dmn'), null);
+    assert.equal(typeByName('rules.dmn').id, 'dmn');
+    assert.equal(typeByName('request.form'), null);
     assert.equal(typeByName('a.sketch.xml', types).id, 'sketch');
     assert.equal(typeByName('a.xml', types), null);
   });
@@ -71,6 +72,7 @@ describe('model types', () => {
   test('XML content gives its type by the root namespace', async () => {
     assert.equal(typeByContent(await readFile(CLAIM, 'utf8')).id, 'cmmn');
     assert.equal(typeByContent('<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"/>').id, 'bpmn');
+    assert.equal(typeByContent('<definitions xmlns="http://www.omg.org/spec/DMN/20151101/dmn.xsd"/>').id, 'dmn');
     assert.equal(typeByContent('<definitions xmlns="urn:sketch"/>'), null);
     assert.equal(typeByContent('<definitions xmlns="urn:sketch"/>', [...MODEL_TYPES, sketch]).id, 'sketch');
   });
@@ -78,11 +80,12 @@ describe('model types', () => {
   test('messages and tool descriptions name the model types', () => {
     assert.equal(
       describeAccepted(),
-      'CMMN (.cmmn, or .xml with a CMMN root element); BPMN (.bpmn, or .bpmn20.xml, or .xml with a BPMN root element)'
+      'CMMN (.cmmn, or .xml with a CMMN root element); BPMN (.bpmn, or .bpmn20.xml, or .xml with a BPMN root element); ' +
+      'DMN (.dmn, or .xml with a DMN root element)'
     );
-    assert.equal(typeLabels(), 'CMMN or BPMN');
+    assert.equal(typeLabels(), 'CMMN, BPMN or DMN');
     assert.equal(typeLabels([modelType('cmmn')]), 'CMMN');
-    assert.equal(typeLabels([...MODEL_TYPES, sketch]), 'CMMN, BPMN or Sketch');
+    assert.equal(typeLabels([modelType('cmmn'), modelType('bpmn')]), 'CMMN or BPMN');
   });
 
   test('a file resolves to its path and type: by name, or an .xml file by its root element', async () => {
@@ -96,7 +99,8 @@ describe('model types', () => {
       await writeFile(join(folder, 'process.xml'), '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"/>');
       await writeFile(join(folder, 'process.bpmn'), '<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"/>');
       await writeFile(join(folder, 'rules.xml'), '<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"/>');
-      await writeFile(join(folder, 'rules.dmn'), '<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/"/>');
+      await writeFile(join(folder, 'other.xml'), '<form xmlns="urn:some-form"/>');
+      await writeFile(join(folder, 'request.form'), '{"components": []}');
       await writeFile(join(folder, 'drawing.sketch.xml'), '<drawing/>');
 
       const byName = await resolveModelFile(folder, 'claim.cmmn');
@@ -108,13 +112,14 @@ describe('model types', () => {
 
       assert.equal((await resolveModelFile(folder, 'process.xml')).type.id, 'bpmn');
       assert.equal((await resolveModelFile(folder, 'process.bpmn')).type.id, 'bpmn');
-      await assert.rejects(resolveModelFile(folder, 'rules.xml'), /rules\.xml is not a CMMN or BPMN file: its root element has no namespace the tools know/);
-      await assert.rejects(resolveModelFile(folder, 'rules.dmn'), /rules\.dmn is not a CMMN or BPMN file: the tools open CMMN \(\.cmmn, or \.xml with a CMMN root element\); BPMN/);
+      assert.equal((await resolveModelFile(folder, 'rules.xml')).type.id, 'dmn');
+      await assert.rejects(resolveModelFile(folder, 'other.xml'), /other\.xml is not a CMMN, BPMN or DMN file: its root element has no namespace the tools know/);
+      await assert.rejects(resolveModelFile(folder, 'request.form'), /request\.form is not a CMMN, BPMN or DMN file: the tools open CMMN \(\.cmmn, or \.xml with a CMMN root element\); BPMN/);
 
       const withSketch = [...MODEL_TYPES, sketch];
 
       assert.equal((await resolveModelFile(folder, 'drawing.sketch.xml', withSketch)).type.id, 'sketch');
-      await assert.rejects(resolveModelFile(folder, 'rules.dmn', withSketch), /is not a CMMN, BPMN or Sketch file/);
+      await assert.rejects(resolveModelFile(folder, 'request.form', withSketch), /is not a CMMN, BPMN, DMN or Sketch file/);
     } finally {
       await rm(folder, { recursive: true, force: true });
     }

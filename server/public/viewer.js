@@ -54,6 +54,15 @@
   // the agent's highlight: the one waiting for its version of the file to be
   // shown, and the one marked on the canvas
   var HIGHLIGHT_MARKER = 'cmmn-lens-highlight';
+
+  // a decision table's selected rows and columns (dmn-js)
+  var TABLE_SELECTED = 'cmmn-lens-selected';
+
+  // the dmn-js viewers already listened to, as views open
+  var attachedViewers = [];
+
+  // whether the instance is a viewer or a modeler ('view' or 'edit')
+  var instanceKind = 'view';
   var pendingHighlight = null;
   var shownHighlight = null;
 
@@ -108,6 +117,37 @@
     problemsEl.hidden = !messages.length;
   }
 
+  /**
+   * The viewer that draws now: the instance itself, or for dmn-js, which
+   * switches between the decision requirements diagram and a decision's
+   * table or literal expression, the active view's viewer.
+   */
+  function activeViewer() {
+    return viewer && viewer.getActiveViewer ? viewer.getActiveViewer() : viewer;
+  }
+
+  /** A service of the active viewer, or null where it has none (a decision table has no canvas). */
+  function service(name) {
+    var active = activeViewer();
+
+    if (!active || !active.get) {
+      return null;
+    }
+
+    try {
+      return active.get(name, false) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** The id of the decision whose table or literal expression is open (dmn-js), or null. */
+  function openDecisionId() {
+    var view = viewer && viewer.getActiveView ? viewer.getActiveView() : null;
+
+    return view && view.type !== 'drd' && view.element ? view.element.id : null;
+  }
+
   function hasSize() {
     return canvasEl.clientWidth > 0 && canvasEl.clientHeight > 0;
   }
@@ -120,7 +160,11 @@
   function fitViewport() {
     function fit() {
       try {
-        var canvas = viewer.get('canvas');
+        var canvas = service('canvas');
+
+        if (!canvas) {
+          return;
+        }
 
         canvas.resized();
         canvas.zoom('fit-viewport');
@@ -151,11 +195,13 @@
    * when the canvas changes size (the problems list opening, say).
    */
   function currentViewbox() {
-    if (!lastGood || !hasSize()) {
+    var canvas = service('canvas');
+
+    if (!lastGood || !hasSize() || !canvas) {
       return null;
     }
 
-    var box = viewer.get('canvas').viewbox();
+    var box = canvas.viewbox();
 
     return { x: box.x, y: box.y, scale: box.scale };
   }
@@ -167,7 +213,11 @@
       return;
     }
 
-    var canvas = viewer.get('canvas');
+    var canvas = service('canvas');
+
+    if (!canvas) {
+      return;
+    }
 
     canvas.resized();
 
@@ -235,8 +285,10 @@
       // storage blocked: the choice lasts for this page only
     }
 
-    if (viewer) {
-      viewer.get('canvas').resized();
+    var canvas = service('canvas');
+
+    if (canvas) {
+      canvas.resized();
     }
   }
 
@@ -269,13 +321,63 @@
     }
   }
 
+  /**
+   * In a decision table (dmn-js), a click selects the rule of the row, or the
+   * input or output of the column head; in a literal expression, the decision.
+   */
+  function onTableClick(event) {
+    if (!openDecisionId() || service('canvas')) {
+      return;
+    }
+
+    var cell = event.target.closest && event.target.closest('[data-row-id], [data-col-id], [data-element-id]');
+    var id = cell ? cell.getAttribute('data-row-id') || cell.getAttribute('data-col-id') || cell.getAttribute('data-element-id') : openDecisionId();
+    var ids = id ? [id] : [];
+
+    if (!sameIds(ids, selectedIds)) {
+      selectedIds = ids;
+      markTableSelection();
+      postSelection();
+      refreshProperties();
+    }
+  }
+
+  /** Nodes of the open table that show an element: a rule's row, an input's or output's column. */
+  function tableNodes(id) {
+    var escaped = window.CSS && CSS.escape ? CSS.escape(id) : id;
+
+    return Array.prototype.slice.call(canvasEl.querySelectorAll(
+      '[data-row-id="' + escaped + '"], [data-col-id="' + escaped + '"], [data-element-id="' + escaped + '"]'
+    ));
+  }
+
+  function markTableSelection() {
+    Array.prototype.forEach.call(canvasEl.querySelectorAll('.' + TABLE_SELECTED), function(node) {
+      node.classList.remove(TABLE_SELECTED);
+    });
+
+    selectedIds.forEach(function(id) {
+      tableNodes(id).forEach(function(node) { node.classList.add(TABLE_SELECTED); });
+    });
+  }
+
   /** Selects again, after an import, the elements that are still there. */
   function restoreSelection() {
-    var elements = viewer.get('elementRegistry').filter(function(element) {
+    var registry = service('elementRegistry');
+    var selection = service('selection');
+
+    if (!registry || !selection) {
+      // a decision table: mark the rows and columns, keep the ids
+      markTableSelection();
+
+      return;
+    }
+
+    var elements = registry.filter(function(element) {
       return !element.labelTarget && element.businessObject && selectedIds.indexOf(element.businessObject.id) >= 0;
     });
 
-    viewer.get('selection').select(elements);
+    selection.select(elements);
 
     var ids = idsOf(elements);
 
@@ -374,7 +476,11 @@
   }
 
   function elementsOf(ids) {
-    var registry = viewer.get('elementRegistry');
+    var registry = service('elementRegistry');
+
+    if (!registry || !service('canvas')) {
+      return [];
+    }
 
     return ids.map(function(id) { return registry.get(id); }).filter(Boolean);
   }
@@ -414,7 +520,12 @@
       return;
     }
 
-    var canvas = viewer.get('canvas');
+    var canvas = service('canvas');
+
+    if (!canvas) {
+      return;
+    }
+
     var view = canvas.viewbox();
     var padding = 40 / view.scale;
     var isVisible = box.minX >= view.x && box.minY >= view.y &&
@@ -439,12 +550,16 @@
 
   function clearHighlight() {
     if (shownHighlight) {
-      var canvas = viewer.get('canvas');
+      var canvas = service('canvas');
 
       elementsOf(shownHighlight.ids).forEach(function(element) {
         canvas.removeMarker(element, HIGHLIGHT_MARKER);
       });
     }
+
+    Array.prototype.forEach.call(canvasEl.querySelectorAll('.' + HIGHLIGHT_MARKER), function(node) {
+      node.classList.remove(HIGHLIGHT_MARKER);
+    });
 
     shownHighlight = null;
   }
@@ -466,7 +581,7 @@
 
     var highlight = pendingHighlight;
     var elements = elementsOf(highlight.ids);
-    var canvas = viewer.get('canvas');
+    var canvas = service('canvas');
 
     pendingHighlight = null;
     shownHighlight = highlight;
@@ -476,6 +591,21 @@
     });
 
     scrollTo(elements);
+
+    if (!canvas) {
+      // a decision table: mark the rows and columns, and bring the first into view
+      var nodes = [];
+
+      highlight.ids.forEach(function(id) {
+        nodes = nodes.concat(tableNodes(id));
+      });
+
+      nodes.forEach(function(node) { node.classList.add(HIGHLIGHT_MARKER); });
+
+      if (nodes[0] && nodes[0].scrollIntoView) {
+        nodes[0].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      }
+    }
   }
 
   function fetchDiagram() {
@@ -646,6 +776,8 @@
 
   /** Replaces the diagram instance with a viewer or a modeler. */
   function createInstance(kind) {
+    instanceKind = kind;
+
     if (viewer) {
       viewer.destroy();
     }
@@ -669,12 +801,56 @@
       }
 
       viewer = new editor.Modeler(options);
-      viewer.on('commandStack.changed', markDirty);
     } else {
       viewer = new window[config.viewer](options);
     }
 
-    viewer.on('selection.changed', onSelectionChanged);
+    attachedViewers = [];
+
+    if (viewer.getActiveViewer) {
+      // dmn-js: each view has its own viewer, made when it first opens
+      viewer.on('views.changed', onViewsChanged);
+    } else {
+      attachViewer(viewer);
+    }
+  }
+
+  /** Listens to a viewer's selection, and in edit mode to its changes. */
+  function attachViewer(target) {
+    if (!target || attachedViewers.indexOf(target) >= 0) {
+      return;
+    }
+
+    attachedViewers.push(target);
+    target.on('selection.changed', onSelectionChanged);
+
+    if (instanceKind === 'edit') {
+      target.on('commandStack.changed', markDirty);
+    }
+  }
+
+  /**
+   * dmn-js opened another view (the user went into a decision's table, or
+   * back to the diagram): listen to its viewer, and mark the selection and the
+   * highlight in it.
+   */
+  function onViewsChanged() {
+    attachViewer(activeViewer());
+
+    if (isImporting) {
+      return;
+    }
+
+    if (shownHighlight) {
+      pendingHighlight = shownHighlight;
+      shownHighlight = null;
+    }
+
+    // the view renders after this event
+    requestAnimationFrame(function() {
+      restoreSelection();
+      syncHighlight();
+    });
   }
 
   /** Loads the editor bundle and its styles, once. */
@@ -840,8 +1016,14 @@
     createInstance('view');
 
     window.addEventListener('resize', function() {
-      viewer.get('canvas').resized();
+      var canvas = service('canvas');
+
+      if (canvas) {
+        canvas.resized();
+      }
     });
+
+    canvasEl.addEventListener('click', onTableClick);
 
     window.addEventListener('beforeunload', function(event) {
       if (isDirty) {

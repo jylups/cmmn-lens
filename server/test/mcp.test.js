@@ -112,7 +112,7 @@ test('validate reports a path it cannot check as a tool error', async () => {
     const result = await client.callTool({ name: 'validate', arguments: { path: 'notes.txt' } });
 
     assert.equal(result.isError, true);
-    assert.match(result.content[0].text, /is not a CMMN or BPMN file/);
+    assert.match(result.content[0].text, /is not a CMMN, BPMN or DMN file/);
   } finally {
     await client.close();
   }

@@ -1,6 +1,6 @@
 # cmmn-lens
 
-See the Flowable CMMN case model or BPMN process Claude is working on, beside the chat. When Claude creates, edits, reviews or explains a local `.cmmn`, `.bpmn` or `.bpmn20.xml` file, the cmmn-lens plugin opens an interactive viewer of it, keeps the view in step with every change, and lets you point at elements instead of naming them.
+See the Flowable CMMN case model, BPMN process or DMN decision Claude is working on, beside the chat. When Claude creates, edits, reviews or explains a local `.cmmn`, `.bpmn`, `.bpmn20.xml` or `.dmn` file, the cmmn-lens plugin opens an interactive viewer of it, keeps the view in step with every change, and lets you point at elements instead of naming them.
 
 In the Claude desktop app the viewer opens in the built-in browser pane, beside the chat; in the terminal and VS Code, Claude gives you a link to open it in your browser.
 
@@ -41,10 +41,10 @@ Then start a new session: a session loads its plugins when it starts.
 ## What it does
 
 - **Follows the file.** The diagram updates within a second of each change, whoever made it, and keeps your zoom, position and selection. Import errors and warnings are listed under the view.
-- **Validates.** After each edit Claude checks the file with the CMMN or BPMN descriptors and the Flowable ones (broken references, duplicate ids, unknown attributes, elements with no shape) and fixes what it broke. BPMN files written with the older Activiti namespace are read as Flowable.
+- **Validates.** After each edit Claude checks the file with the CMMN, BPMN or DMN descriptors and the Flowable ones (broken references, duplicate ids, unknown attributes, elements with no shape) and fixes what it broke. BPMN files written with the older Activiti namespace are read as Flowable, and DMN 1.1 and 1.2 files as DMN 1.3.
 - **Points at changes.** Claude highlights the elements it added or changed.
-- **Knows what you select.** Click an element and say "rename this" or "what does this do?". The properties panel shows the selection's Flowable attributes, and its criteria in CMMN or its flows, conditions and event definitions in BPMN.
-- **Lets you edit.** Edit mode has the Flowable properties panel. For CMMN it has Copy, Cut, Paste and Help beside the selected element (or Cmd/Ctrl+C, X, V); for BPMN, Flowable's typed service tasks in the palette and lint that marks problems as you edit. Saving writes the file. If Claude changed the file while you had unsaved edits, the viewer asks which version to keep, and Claude is told what you changed and saved.
+- **Knows what you select.** Click an element and say "rename this" or "what does this do?". The properties panel shows the selection's Flowable attributes, and its criteria in CMMN, its flows, conditions and event definitions in BPMN, or a decision's table and a rule's entries in DMN. DMN files open on their decision requirements diagram; open a decision's table from its shape, and click a rule or column to select it.
+- **Lets you edit.** Edit mode has the Flowable properties panel. For CMMN it has Copy, Cut, Paste and Help beside the selected element (or Cmd/Ctrl+C, X, V); for BPMN, Flowable's typed service tasks in the palette and lint that marks problems as you edit; for DMN, the dmn-js table editor and the DMN properties panel. Saving writes the file. If Claude changed the file while you had unsaved edits, the viewer asks which version to keep, and Claude is told what you changed and saved.
 
 ## Try it
 
@@ -54,14 +54,16 @@ Then start a new session: a session loads its plugins when it starts.
 - After editing in the view: "I moved two tasks into a new stage. Check the model still validates."
 - "Open `processes/holiday.bpmn20.xml` and add a reminder timer on 'Approve or reject' after two days."
 - Select a gateway in a BPMN view, then: "When does this take the default flow?"
+- "Open `rules/discount.dmn` and add a rule: silver customers get 5% on orders over 500."
+- Click a rule in a decision table, then: "Which orders does this rule catch that the next one doesn't?"
 
 ## What it runs, reads and sends
 
 - **A local MCP server**, started by Claude Code with `npx @jylups/cmmn-lens-server@<pinned version>`. On first use npx downloads that package from the npm registry; nothing else is downloaded.
 - **A web page on `127.0.0.1` only**, with a random port and a random token in its address; requests without the token, or from pages on other sites, are refused. It stops with the MCP server.
-- **Files:** it reads the `.cmmn`, `.bpmn` and `.bpmn20.xml` (or `.xml`) files Claude opens in the viewer, and writes one only when you save from the viewer. While it runs, it keeps a small file (its port, token and project folder) in a `cmmn-lens` folder under the system's temporary folder, readable only by you, so the prompt hook can find it.
+- **Files:** it reads the `.cmmn`, `.bpmn`, `.bpmn20.xml` and `.dmn` (or `.xml`) files Claude opens in the viewer, and writes one only when you save from the viewer. While it runs, it keeps a small file (its port, token and project folder) in a `cmmn-lens` folder under the system's temporary folder, readable only by you, so the prompt hook can find it.
 - **A prompt hook** (Node) runs before each prompt. It asks the local server for your selection in the viewer and for changes you saved there, and adds them to the prompt's context. It doesn't read or keep the text of your prompts, and it stores nothing.
-- **Nothing leaves your machine:** no other network requests, no telemetry, no accounts. The links out open only when you click them: the **Help** tool in CMMN edit mode opens Flowable's CMMN reference page for the selected element in a new browser tab, and the bpmn.io watermark in a BPMN diagram's corner opens bpmn.io.
+- **Nothing leaves your machine:** no other network requests, no telemetry, no accounts. The links out open only when you click them: the **Help** tool in CMMN edit mode opens Flowable's CMMN reference page for the selected element in a new browser tab, and the bpmn.io watermark in a BPMN or DMN view's corner opens bpmn.io.
 
 ## Settings
 
@@ -82,4 +84,4 @@ Report problems and ask questions in the [issues](https://github.com/jylups/cmmn
 
 ## License
 
-MIT. The viewer includes third-party packages under their own licenses, listed in the server package's `THIRD_PARTY_NOTICES.md`. The BPMN viewer is built on bpmn-js, whose license requires the bpmn.io watermark in the diagram's corner to stay visible.
+MIT. The viewer includes third-party packages under their own licenses, listed in the server package's `THIRD_PARTY_NOTICES.md`. The BPMN and DMN viewers are built on bpmn-js and dmn-js, whose licenses require the bpmn.io watermark in the view's corner to stay visible.

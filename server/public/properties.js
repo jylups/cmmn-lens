@@ -1,7 +1,8 @@
 /**
  * The read-only properties panel: shows the selected elements as the server
  * describes them from the file (server/src/selection.js for CMMN,
- * server/src/types/bpmn/index.js for BPMN). Every value is set
+ * server/src/types/bpmn/index.js for BPMN, server/src/types/dmn/index.js for
+ * DMN). Every value is set
  * as text, never parsed as HTML.
  */
 (function() {
@@ -150,6 +151,60 @@
     }));
   }
 
+  function listSection(title, lines, isCode) {
+    var items = (lines || []).filter(Boolean);
+
+    if (!items.length) {
+      return null;
+    }
+
+    var list = el('ul', 'properties-list');
+
+    items.forEach(function(line) {
+      list.appendChild(el('li', isCode ? 'is-code' : '', line));
+    });
+
+    return section(title, [list]);
+  }
+
+  function clauseText(clause) {
+    var name = clause.label || clause.name || clause.expression || clause.id;
+    var details = [clause.expression && clause.expression !== name ? clause.expression : null, clause.typeRef].filter(Boolean);
+
+    return name + (details.length ? ' (' + details.join(', ') + ')' : '');
+  }
+
+  /** A DMN decision table: its hit policy, inputs, outputs and rule count. */
+  function decisionTableSection(table) {
+    if (!table) {
+      return null;
+    }
+
+    return section('Decision table', [
+      rows([
+        ['Hit policy', table.hitPolicy + (table.aggregation ? ' (' + table.aggregation + ')' : '')],
+        ['Rules', table.ruleCount]
+      ]),
+      listSection('Inputs', (table.inputs || []).map(clauseText)),
+      listSection('Outputs', (table.outputs || []).map(clauseText))
+    ]);
+  }
+
+  /** What a DMN decision requires, as lines. */
+  function requirementLines(requires) {
+    return (requires || []).map(function(requirement) {
+      if (requirement.decision) {
+        return 'Decision ' + requirement.decision;
+      }
+
+      if (requirement.inputData) {
+        return 'Input data ' + requirement.inputData;
+      }
+
+      return requirement.businessKnowledgeModel ? 'Knowledge model ' + requirement.businessKnowledgeModel : null;
+    });
+  }
+
   function describeElement(element) {
     var node = el('article', 'properties-element');
 
@@ -164,9 +219,9 @@
     var type = typeLabel(element.type) + (definition ? ' · ' + typeLabel(definition.type) : '');
 
     node.appendChild(el('div', 'properties-type', type));
-    node.appendChild(el('div', 'properties-name', name || element.id));
+    node.appendChild(el('div', 'properties-name', name || (element.number ? 'Rule ' + element.number : element.id)));
 
-    var container = element.stage || element.container;
+    var container = element.stage || element.container || element.decision;
 
     [
       rows([
@@ -180,7 +235,14 @@
         ['To', nameAndId(element.to)],
         ['Condition', element.condition, true],
         ['Default flow', element.isDefault ? 'Yes' : undefined],
-        ['Documentation', element.documentation]
+        ['Documentation', element.documentation],
+        ['Description', element.description],
+        ['Rule', element.number],
+        ['Label', element.label],
+        ['Expression', element.expression, true],
+        ['Type', element.typeRef],
+        ['Allowed values', element.allowedValues, true],
+        ['Text', element.text, true]
       ].concat(attributeRows(element.attributes))),
       definition && section(typeLabel(definition.type), [
         rows([['Id', definition.id, true]].concat(attributeRows(definition.attributes))),
@@ -192,7 +254,16 @@
       element.sentry && section('Sentry', [sentryList(element.sentry)]),
       flowsSection('Incoming flows', element.incoming, 'from'),
       flowsSection('Outgoing flows', element.outgoing, 'to'),
-      eventDefinitionsSection(element.eventDefinitions)
+      eventDefinitionsSection(element.eventDefinitions),
+      decisionTableSection(element.decisionTable),
+      element.literalExpression && section('Literal expression', [
+        rows([['Type', element.literalExpression.typeRef]]),
+        listSection('Expression', [element.literalExpression.text], true)
+      ]),
+      listSection('When', (element.when || []).map(function(entry) { return entry.input + ': ' + entry.test; }), true),
+      listSection('Then', (element.then || []).map(function(entry) { return entry.output + ': ' + entry.value; }), true),
+      listSection('Requires', requirementLines(element.requires)),
+      listSection('Required by', (element.requiredBy || []).map(nameAndId))
     ].forEach(function(child) {
       if (child) {
         node.appendChild(child);

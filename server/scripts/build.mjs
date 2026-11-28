@@ -6,13 +6,15 @@
 // - public/vendor/: the files the viewer page loads as they are, for each
 //   model type (for CMMN: the cmmn-js viewer bundle, its styles, the Flowable
 //   descriptor; for BPMN, in vendor/bpmn: the flowable-bpmn-js viewer bundle
-//   and its styles)
+//   and its styles; for DMN, in vendor/dmn: the dmn-js viewer bundle, its
+//   styles and the properties panel's)
 // - public/build/<type>/: what edit mode loads for each model type, built
 //   separately so a page loads only its own type's (for CMMN: editor.js, the
 //   Modeler and the Flowable properties panel, bundled, and
 //   properties-panel.css, the panel's LESS styles, compiled; for BPMN:
 //   editor.js, the flowable-bpmn-js Modeler with its properties panel, lint
-//   and touch module)
+//   and touch module; for DMN: editor.js, the dmn-js Modeler with the DMN
+//   properties panel)
 // - THIRD_PARTY_NOTICES.md: every package whose code or files the package
 //   carries
 //
@@ -33,6 +35,7 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const cmmnJsDist = dirname(require.resolve('@jylups/cmmn-js/dist/cmmn-navigated-viewer.production.min.js'));
 const bpmnJsDist = dirname(require.resolve('@jylups/flowable-bpmn-js/dist/flowable-bpmn-navigated-viewer.production.min.js'));
+const dmnJsDist = dirname(require.resolve('dmn-js/dist/dmn-navigated-viewer.production.min.js'));
 
 /**
  * What each model type's page needs built: `vendor`, files copied into
@@ -72,6 +75,26 @@ const TYPES = [
       'bpmn/bpmn-js-bpmnlint.css': join(bpmnJsDist, 'assets/bpmn-js-bpmnlint.css')
     },
     editor: join(root, 'client', 'bpmn', 'editor.js'),
+    styles: {}
+  },
+  {
+    id: 'dmn',
+    // dmn-js ships its viewer bundle and styles; the properties panel's styles
+    // come with dmn-js-properties-panel
+    vendor: {
+      'dmn/dmn-navigated-viewer.js': join(dmnJsDist, 'dmn-navigated-viewer.production.min.js'),
+      'dmn/diagram-js.css': join(dmnJsDist, 'assets/diagram-js.css'),
+      'dmn/dmn-js-shared.css': join(dmnJsDist, 'assets/dmn-js-shared.css'),
+      'dmn/dmn-js-drd.css': join(dmnJsDist, 'assets/dmn-js-drd.css'),
+      'dmn/dmn-js-decision-table.css': join(dmnJsDist, 'assets/dmn-js-decision-table.css'),
+      'dmn/dmn-js-decision-table-controls.css': join(dmnJsDist, 'assets/dmn-js-decision-table-controls.css'),
+      'dmn/dmn-js-literal-expression.css': join(dmnJsDist, 'assets/dmn-js-literal-expression.css'),
+      'dmn/dmn-js-boxed-expression.css': join(dmnJsDist, 'assets/dmn-js-boxed-expression.css'),
+      'dmn/dmn-js-boxed-expression-controls.css': join(dmnJsDist, 'assets/dmn-js-boxed-expression-controls.css'),
+      'dmn/dmn-embedded.css': join(dmnJsDist, 'assets/dmn-font/css/dmn-embedded.css'),
+      'dmn/properties-panel.css': require.resolve('dmn-js-properties-panel/dist/assets/properties-panel.css')
+    },
+    editor: join(root, 'client', 'dmn', 'editor.js'),
     styles: {}
   }
 ];

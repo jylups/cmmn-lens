@@ -35,7 +35,7 @@ Limits: 10 submissions per organization per 24 hours (drafts and withdrawn ones 
 ### Suggested data handling answers
 
 - **Reads or stores personal data?** No. It reads the CMMN files Claude opens in the viewer and writes one only when the user saves from the viewer. The selection and the summary of saved changes are kept in the local server's memory until they are reported or the session ends.
-- **Sends data to services beyond declared connectors?** No. The only network use is the local page on `127.0.0.1` and npx downloading the pinned server package from the npm registry on first use. No telemetry. In CMMN edit mode, the Help tool opens Flowable's public CMMN documentation in a new browser tab when the user clicks it, and in a BPMN diagram the bpmn.io watermark opens bpmn.io when clicked; nothing is sent with either.
+- **Sends data to services beyond declared connectors?** No. The only network use is the local page on `127.0.0.1` and npx downloading the pinned server package from the npm registry on first use. No telemetry. In CMMN edit mode, the Help tool opens Flowable's public CMMN documentation in a new browser tab when the user clicks it, and in a BPMN or DMN view the bpmn.io watermark opens bpmn.io when clicked; nothing is sent with either.
 - **How long is data kept?** Nothing is kept after the session: the server's registry file (port, token, project folder) is deleted when the server stops.
 - **Intended for people under 18?** No; it is a developer tool for case model authors.
 

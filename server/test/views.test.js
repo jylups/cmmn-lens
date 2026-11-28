@@ -133,7 +133,7 @@ describe('ViewServer', () => {
     try {
       await writeFile(join(folder, 'notes.txt'), 'not a model');
 
-      await assert.rejects(views.open(join(folder, 'notes.txt')), /is not a CMMN or BPMN file/);
+      await assert.rejects(views.open(join(folder, 'notes.txt')), /is not a CMMN, BPMN or DMN file/);
       await assert.rejects(views.open(join(folder, 'missing.cmmn')), /doesn't exist/);
 
       const folderNamedCmmn = join(folder, 'models.cmmn');
