@@ -7,6 +7,7 @@ version.
 ## Unreleased
 
 - The server reads files through model types, so BPMN, DMN and forms can be added one module each. CMMN is the only type so far and works as before. An `.xml` file opens when its root element is in a model type's namespace (a CMMN `.xml` file as before); other `.xml` files are refused with a message instead of failing to parse
+- The viewer page loads what the file's model type needs: its viewer script and styles with the page, and its editor bundle and styles on Edit. Following, selection, highlight, the properties panel, save and conflicts are shared by every type. The build writes each type's editor separately, under `public/build/<type>/` (the CMMN editor moves to `/assets/build/cmmn/editor.js`)
 - `open_view` and `validate` report the file's model type (`type: "cmmn"`), and the tool descriptions name the model types and the files each accepts
 
 ## 0.1.6 (2026-11-27)

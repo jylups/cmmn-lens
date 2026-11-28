@@ -49,8 +49,19 @@ describe('saving from the page', () => {
 
     assert.match(html, /<button type="button" id="edit" hidden>Edit<\/button>/);
     assert.match(config.saveUrl, /^\/view\/[0-9a-f]+\/save\?t=/);
-    assert.equal(config.editorScriptUrl, '/assets/build/editor.js');
-    assert.deepEqual(config.editorStyleUrls, ['/assets/build/properties-panel.css', '/assets/cmmn-js-flowable-tools.css']);
+    assert.equal(config.type, 'cmmn');
+    assert.equal(config.viewer, 'CmmnJS');
+    assert.equal(config.callbacks, true);
+    assert.deepEqual(config.moddleExtensions, { flowable: '/assets/flowable.json' });
+    assert.deepEqual(config.editor, {
+      script: '/assets/build/cmmn/editor.js',
+      styles: ['/assets/build/cmmn/properties-panel.css', '/assets/cmmn-js-flowable-tools.css'],
+      global: 'CmmnLensEditor'
+    });
+    assert.match(html, /<body data-model-type="cmmn">/);
+    assert.match(html, /<link rel="stylesheet" href="\/assets\/cmmn-js-touch\.css">/);
+    assert.match(html, /<script src="\/assets\/cmmn-navigated-viewer\.js"><\/script>\n {2}<script src="\/assets\/properties\.js">/);
+    assert.doesNotMatch(html, /<(script|link)[^>]*(editor\.js|properties-panel\.css)/, 'the editor loads on Edit only');
   });
 
   test('writes the model, keeps the file\'s permissions, and answers its version', async () => {
@@ -133,7 +144,7 @@ test('the editor files are served once built, and say how to build them otherwis
     await copyFile(FIXTURE, join(folder, 'claim.cmmn'));
 
     const view = await views.open(join(folder, 'claim.cmmn'));
-    const response = await fetch(new URL('/assets/build/editor.js', view.url));
+    const response = await fetch(new URL('/assets/build/cmmn/editor.js', view.url));
 
     if (response.status === 404) {
       assert.match(await response.text(), /run npm run build/);

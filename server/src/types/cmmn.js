@@ -21,5 +21,28 @@ export default {
   diff: diffModels,
   isEmpty,
   describeChanges,
-  resolveDrawnIds
+  resolveDrawnIds,
+  page: {
+    styles: ['/assets/diagram-js.css', '/assets/cmmn-embedded.css', '/assets/cmmn-js-flowable.css', '/assets/cmmn-js-touch.css'],
+    scripts: ['/assets/cmmn-navigated-viewer.js'],
+    viewer: 'CmmnJS',
+    callbacks: true,
+    moddleExtensions: { flowable: '/assets/flowable.json' },
+    editor: {
+      script: '/assets/build/cmmn/editor.js',
+      styles: ['/assets/build/cmmn/properties-panel.css', '/assets/cmmn-js-flowable-tools.css'],
+      global: 'CmmnLensEditor'
+    }
+  },
+  assets: {
+    '/assets/cmmn-navigated-viewer.js': 'vendor/cmmn-navigated-viewer.js',
+    '/assets/diagram-js.css': 'vendor/diagram-js.css',
+    '/assets/cmmn-embedded.css': 'vendor/cmmn-embedded.css',
+    '/assets/cmmn-js-flowable.css': 'vendor/cmmn-js-flowable.css',
+    '/assets/cmmn-js-touch.css': 'vendor/cmmn-js-touch.css',
+    '/assets/cmmn-js-flowable-tools.css': 'vendor/cmmn-js-flowable-tools.css',
+    '/assets/flowable.json': 'vendor/flowable.json',
+    '/assets/build/cmmn/editor.js': 'build/cmmn/editor.js',
+    '/assets/build/cmmn/properties-panel.css': 'build/cmmn/properties-panel.css'
+  }
 };

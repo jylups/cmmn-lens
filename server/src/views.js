@@ -9,32 +9,22 @@ import { FileFollower, versionOf } from './follow.js';
 import { resolveModelFile } from './paths.js';
 import { register, unregister } from './registry.js';
 import { renderPage } from './page.js';
+import { MODEL_TYPES } from './types/index.js';
 
 // public/ sits next to src/ in the repository and next to dist/ in the package
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public');
-const VENDOR_DIR = join(PUBLIC_DIR, 'vendor');
 
 /**
- * The files the viewer page loads, by URL path. They are published package
- * files with nothing private in them, so they are served without the token.
- * The vendor files (the cmmn-js viewer, its styles, the Flowable descriptor)
- * are copied into public/vendor by `npm run build`, so the published package
- * needs no dependencies installed.
+ * The files the page loads, by URL path: the page's own, and each model
+ * type's (its viewer, styles and editor). The vendor and build files are
+ * written into public/ by `npm run build`, so the published package needs no
+ * dependencies installed.
  */
 const ASSETS = new Map([
-  ['/assets/cmmn-navigated-viewer.js', join(VENDOR_DIR, 'cmmn-navigated-viewer.js')],
-  ['/assets/diagram-js.css', join(VENDOR_DIR, 'diagram-js.css')],
-  ['/assets/cmmn-embedded.css', join(VENDOR_DIR, 'cmmn-embedded.css')],
-  ['/assets/cmmn-js-flowable.css', join(VENDOR_DIR, 'cmmn-js-flowable.css')],
-  ['/assets/cmmn-js-touch.css', join(VENDOR_DIR, 'cmmn-js-touch.css')],
-  ['/assets/cmmn-js-flowable-tools.css', join(VENDOR_DIR, 'cmmn-js-flowable-tools.css')],
-  ['/assets/flowable.json', join(VENDOR_DIR, 'flowable.json')],
   ['/assets/properties.js', join(PUBLIC_DIR, 'properties.js')],
   ['/assets/viewer.js', join(PUBLIC_DIR, 'viewer.js')],
   ['/assets/viewer.css', join(PUBLIC_DIR, 'viewer.css')],
-  // built by `npm run build` (scripts/build.mjs); loaded in edit mode
-  ['/assets/build/editor.js', join(PUBLIC_DIR, 'build', 'editor.js')],
-  ['/assets/build/properties-panel.css', join(PUBLIC_DIR, 'build', 'properties-panel.css')]
+  ...MODEL_TYPES.flatMap(type => Object.entries(type.assets).map(([url, file]) => [url, join(PUBLIC_DIR, file)]))
 ]);
 
 const CONTENT_TYPES = {
@@ -447,7 +437,8 @@ export class ViewServer {
       eventsUrl: `/view/${view.id}/events?t=${this.token}`,
       selectionUrl: `/view/${view.id}/selection?t=${this.token}`,
       describeUrl: `/view/${view.id}/describe?t=${this.token}`,
-      saveUrl: `/view/${view.id}/save?t=${this.token}`
+      saveUrl: `/view/${view.id}/save?t=${this.token}`,
+      type: view.type
     });
 
     return send(response, 200, page, {

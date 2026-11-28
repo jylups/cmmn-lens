@@ -1,5 +1,3 @@
-/* global CmmnJS */
-
 (function() {
   'use strict';
 
@@ -22,10 +20,11 @@
   var saveButton = document.getElementById('save');
   var doneButton = document.getElementById('done');
 
-  // the diagram: a NavigatedViewer in view mode, a Modeler with the Flowable
-  // properties panel in edit mode (both answer the same calls used here)
+  // the diagram: the model type's viewer in view mode, its modeler with the
+  // Flowable properties panel in edit mode (both diagram-js, answering the
+  // same calls used here); the moddle extensions both read the file with
   var viewer = null;
-  var flowableDescriptor = null;
+  var moddleExtensions = null;
   var mode = 'view';
   var isDirty = false;
   var isSaving = false;
@@ -286,18 +285,46 @@
     }
   }
 
+  /**
+   * Reads XML into the diagram. cmmn-js takes a callback; bpmn-js and dmn-js
+   * return a promise (config.callbacks says which).
+   */
   function importXML(xml) {
     isImporting = true;
 
-    return new Promise(function(resolve) {
+    var imported = config.callbacks ? new Promise(function(resolve) {
       viewer.importXML(xml, function(error, warnings) {
-        if (!error) {
-          restoreSelection();
-        }
-
-        isImporting = false;
         resolve({ error: error, warnings: warnings || [] });
       });
+    }) : viewer.importXML(xml).then(function(result) {
+      return { error: null, warnings: (result && result.warnings) || [] };
+    }, function(error) {
+      return { error: error, warnings: error.warnings || [] };
+    });
+
+    return imported.then(function(result) {
+      if (!result.error) {
+        restoreSelection();
+      }
+
+      isImporting = false;
+
+      return result;
+    });
+  }
+
+  /** The diagram as XML, by callback or promise as importXML. */
+  function exportXML() {
+    if (config.callbacks) {
+      return new Promise(function(resolve, reject) {
+        viewer.saveXML({ format: true }, function(error, xml) {
+          return error ? reject(error) : resolve(xml);
+        });
+      });
+    }
+
+    return viewer.saveXML({ format: true }).then(function(result) {
+      return result.xml;
     });
   }
 
@@ -567,7 +594,7 @@
   }
 
   function updateButtons() {
-    editButton.hidden = mode !== 'view' || !lastGood;
+    editButton.hidden = mode !== 'view' || !lastGood || !config.editor;
     saveButton.hidden = mode !== 'edit';
     doneButton.hidden = mode !== 'edit';
     saveButton.disabled = !isDirty || isSaving;
@@ -628,24 +655,23 @@
 
     var options = {
       container: canvasEl,
-      moddleExtensions: { flowable: flowableDescriptor }
+      moddleExtensions: moddleExtensions
     };
 
     if (kind === 'edit') {
-      options.keyboard = { bind: true };
-      options.additionalModules = window.CmmnLensEditor.modules;
-      options.propertiesPanel = { parent: propertiesEditorEl };
+      var editor = window[config.editor.global];
 
-      // keep the context pad within the canvas, left of the properties panel
-      options.contextPadPosition = {
-        visibleRight: function() {
-          return canvasEl.getBoundingClientRect().right;
-        }
-      };
-      viewer = new window.CmmnLensEditor.Modeler(options);
+      options.keyboard = { bind: true };
+      options.additionalModules = editor.modules;
+
+      if (editor.options) {
+        Object.assign(options, editor.options({ canvas: canvasEl, properties: propertiesEditorEl }));
+      }
+
+      viewer = new editor.Modeler(options);
       viewer.on('commandStack.changed', markDirty);
     } else {
-      viewer = new CmmnJS(options);
+      viewer = new window[config.viewer](options);
     }
 
     viewer.on('selection.changed', onSelectionChanged);
@@ -656,7 +682,7 @@
     if (!editorLoading) {
       editorLoading = new Promise(function(resolve, reject) {
         // after the viewer's styles: the panel's, then the context pad tools'
-        config.editorStyleUrls.forEach(function(href) {
+        config.editor.styles.forEach(function(href) {
           var style = document.createElement('link');
 
           style.rel = 'stylesheet';
@@ -666,7 +692,7 @@
 
         var script = document.createElement('script');
 
-        script.src = config.editorScriptUrl;
+        script.src = config.editor.script;
         script.onload = function() { resolve(); };
         script.onerror = function() {
           editorLoading = null;
@@ -736,16 +762,20 @@
     updateButtons();
     setStatus('Saving…');
 
-    viewer.saveXML({ format: true }, function(error, xml) {
-      if (error) {
-        isSaving = false;
-        updateButtons();
-        setStatus('Couldn\'t export the model: ' + error.message, 'error');
+    exportXML().then(function(xml) {
+      return xml;
+    }, function(error) {
+      isSaving = false;
+      updateButtons();
+      setStatus('Couldn\'t export the model: ' + error.message, 'error');
 
+      return null;
+    }).then(function(xml) {
+      if (xml === null) {
         return;
       }
 
-      fetch(config.saveUrl, {
+      return fetch(config.saveUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ xml: xml, baseVersion: overwriteVersion || shownVersion })
@@ -782,14 +812,31 @@
     });
   }
 
-  fetch(config.flowableUrl).then(function(response) {
-    if (!response.ok) {
-      throw new Error(response.statusText);
-    }
+  /** Fetches the model type's moddle extensions, by name. */
+  function loadModdleExtensions() {
+    var names = Object.keys(config.moddleExtensions || {});
 
-    return response.json();
-  }).then(function(descriptor) {
-    flowableDescriptor = descriptor;
+    return Promise.all(names.map(function(name) {
+      return fetch(config.moddleExtensions[name]).then(function(response) {
+        if (!response.ok) {
+          throw new Error(response.statusText);
+        }
+
+        return response.json();
+      });
+    })).then(function(descriptors) {
+      var extensions = {};
+
+      names.forEach(function(name, index) {
+        extensions[name] = descriptors[index];
+      });
+
+      return extensions;
+    });
+  }
+
+  loadModdleExtensions().then(function(extensions) {
+    moddleExtensions = extensions;
     createInstance('view');
 
     window.addEventListener('resize', function() {
