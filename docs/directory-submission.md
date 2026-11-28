@@ -55,13 +55,13 @@ Limits: 10 submissions per organization per 24 hours (drafts and withdrawn ones 
 ### Manifest and name
 
 - [x] Name `cmmn-lens`: lowercase, hyphenated, not a reserved word, not generic only, no third-party mark; free on GitHub and npm. Permanent once published.
-- [x] `version` (0.1.5, raised each release, checked by CI against the server package and the pinned server), `description`, `author`, `homepage`, `repository`.
+- [x] `version` (0.1.6, raised each release, checked by CI against the server package and the pinned server), `description`, `author`, `homepage`, `repository`.
 - [x] `hooks/hooks.json` is valid, under a top-level `hooks` object, with the documented `UserPromptSubmit` event and a `command` hook; not repeated in `plugin.json`.
 - [x] `userConfig.selection_context`: a boolean with title, description and default; nothing sensitive.
 
 ### What it runs and connects to
 
-- [x] `.mcp.json`: a stdio server declared with `command` and `args`, an exact version (`@jylups/cmmn-lens-server@0.1.5`), no `@latest` or range.
+- [x] `.mcp.json`: a stdio server declared with `command` and `args`, an exact version (`@jylups/cmmn-lens-server@0.1.6`), no `@latest` or range.
 - [x] The hook runs `node` with its file in `args`, named from `${CLAUDE_PLUGIN_ROOT}` with no other variable, substitution or inline program.
 - [x] No credentials in any file; no environment credential read or sent.
 - [x] The README discloses everything it runs, reads, writes and sends, which is what the security scan compares against.
