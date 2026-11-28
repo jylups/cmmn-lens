@@ -4,7 +4,7 @@ All notable changes to the cmmn-lens plugin and its server package
 (`@jylups/cmmn-lens-server`), which are released together with the same
 version.
 
-## Unreleased
+## 0.3.0 (2026-11-27)
 
 - DMN: `.dmn` files (and `.xml` files with a DMN root element) open in a viewer built on dmn-js 18.1.0, on the decision requirements diagram; a decision's table or literal expression opens from its shape, with "View DRD" to go back. In a table, clicking a rule or a column head selects the rule, input or output, and the agent's highlight marks rows and columns. Edit opens the dmn-js Modeler with the DMN properties panel. Following the file keeps the open table, and save and conflicts work as for the other types
 - `validate`, `get_selection`, `get_changes` and `highlight` work on DMN: DMN 1.1 and 1.2 are migrated to 1.3 as Flowable and dmn-js read them, Flowable's `flowable:forceDMN11` and Flowable Design's extension elements are kept, a decision is described with its table or literal expression and requirements, and a rule with its entries under their inputs and outputs. `docs/dmn-flowable-extensions.md` records what Flowable writes into DMN files
